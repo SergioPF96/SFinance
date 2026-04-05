@@ -1,0 +1,39 @@
+# ── Flutter / Dart ────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# Code generation artifacts
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+*.gr.dart
+
+# pubspec.lock:
+#   COMMIT for apps (apps/sfinance/, apps/dashboard/, etc.)
+#   IGNORE for packages (packages/shared_*/):
+packages/*/pubspec.lock
+
+# ── Melos ─────────────────────────────────────────────────────────
+.melos_tool/
+melos_managed_symlinks/
+
+# ── IDE ───────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# ── OS ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Project scratch files ─────────────────────────────────────────
+constitution_prompt.txt
+
+# ── Spec-kit local config ─────────────────────────────────────────
+# init-options.json is a local setup artifact, not part of project source
+.specify/init-options.json
