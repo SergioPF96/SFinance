@@ -1,4 +1,4 @@
-# SFinance Development Guidelines
+﻿# SFinance Development Guidelines
 
 ## Project
 
@@ -51,6 +51,8 @@ No desktop-only interaction patterns without a touch-compatible fallback.
 well-maintained over cutting-edge. No premature abstractions.
 
 ## Active Technologies
+- Dart (Flutter stable channel) + flutter_riverpod, go_router, drift, fl_chart, intl (001-sfinance-core-app)
+- Drift (SQLite) — local on-device only (001-sfinance-core-app)
 
 - **Framework**: Flutter (stable channel)
 - **Language**: Dart
