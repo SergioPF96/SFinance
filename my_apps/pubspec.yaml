@@ -1,0 +1,25 @@
+name: my_apps
+publish_to: none
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+workspace:
+  - apps/sfinance
+  - packages/shared_models
+  - packages/shared_ui
+  - packages/shared_services
+
+dev_dependencies:
+  melos: ^7.5.1
+
+melos:
+  scripts:
+    test:
+      run: melos exec --fail-fast -- flutter test
+      packageFilters:
+        dirExists: test
+    analyze:
+      run: melos exec -- flutter analyze
+    format:
+      run: melos exec -- dart format .
