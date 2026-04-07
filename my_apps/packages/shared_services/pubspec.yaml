@@ -1,0 +1,28 @@
+name: shared_services
+description: Shared storage services (Drift/SQLite) and generation logic for SFinance apps.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_models:
+    path: ../shared_models
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.0
+  riverpod: ^2.5.0
+  path_provider: ^2.1.0
+  path: ^1.9.0
+
+dev_dependencies:
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.0
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0

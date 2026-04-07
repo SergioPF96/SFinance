@@ -1,0 +1,15 @@
+name: my_apps
+
+packages:
+  - apps/**
+  - packages/**
+
+scripts:
+  test:
+    run: melos exec --fail-fast -- flutter test
+    packageFilters:
+      dirExists: test
+  analyze:
+    run: melos exec -- flutter analyze
+  format:
+    run: melos exec -- dart format .

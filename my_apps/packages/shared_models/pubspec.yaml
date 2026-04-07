@@ -1,0 +1,16 @@
+name: shared_models
+description: Pure Dart data models shared across SFinance apps.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+resolution: workspace
+
+dependencies:
+  intl: ^0.19.0
+
+dev_dependencies:
+  lints: ^3.0.0
+  test: ^1.25.0

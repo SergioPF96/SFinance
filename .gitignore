@@ -6,7 +6,9 @@
 build/
 
 # Code generation artifacts
+# Drift-generated files in shared_services are committed (required to build without running build_runner)
 *.g.dart
+!my_apps/packages/shared_services/**/*.g.dart
 *.freezed.dart
 *.mocks.dart
 *.gr.dart
@@ -33,6 +35,9 @@ desktop.ini
 
 # ── Project scratch files ─────────────────────────────────────────
 constitution_prompt.txt
+specify_prompt.txt
+plan_prompt.txt
+*_prompt.txt
 
 # ── Spec-kit local config ─────────────────────────────────────────
 # init-options.json is a local setup artifact, not part of project source
