@@ -58,7 +58,7 @@ final recentTransactionsProvider =
   return ref
       .watch(transactionDaoProvider)
       .watchRecent(limit: 10)
-      .map((rows) => rows.map(_toDisplay).toList() as List<TransactionDisplay>);
+      .map((rows) => rows.map(_toDisplay).toList());
 });
 
 /// All transactions matching a [TimeRange] for the Entradas view.
@@ -69,6 +69,6 @@ final filteredTransactionsProvider =
     return ref
         .watch(transactionDaoProvider)
         .watchFiltered(start: range.start, end: range.end)
-        .map((rows) => rows.map(_toDisplay).toList() as List<TransactionDisplay>);
+        .map((rows) => rows.map(_toDisplay).toList());
   },
 );

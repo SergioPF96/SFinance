@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_services/shared_services.dart';
 import 'dao_providers.dart';
-import 'kpi_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Expense Form
@@ -115,7 +114,6 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
 
     try {
       final dao = ref.read(transactionDaoProvider);
-      final capitalDao = ref.read(initialCapitalDaoProvider);
 
       if (s.isRecurring) {
         // Create RecurringTemplate + first Transaction entry
@@ -153,7 +151,6 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
       } else {
         // One-off expense
         final today = DateTime.now();
-        final wasEmpty = !(ref.read(kpiProvider).value?.hasTransactions ?? false);
 
         await dao.insert(
           TransactionsCompanion.insert(
@@ -167,8 +164,6 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
                 : s.descripcion.trim()),
           ),
         );
-
-        if (wasEmpty) await capitalDao.deactivate();
       }
 
       // Reset form
@@ -312,10 +307,7 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
 
     try {
       final dao = ref.read(transactionDaoProvider);
-      final capitalDao = ref.read(initialCapitalDaoProvider);
       final today = DateTime.now();
-      final wasEmpty =
-          !(ref.read(kpiProvider).value?.hasTransactions ?? false);
 
       if (s.isSalario) {
         final templateDao = ref.read(templateDaoProvider);
@@ -392,8 +384,6 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
           ),
         );
       }
-
-      if (wasEmpty) await capitalDao.deactivate();
 
       state = const IncomeFormState();
       return null;
