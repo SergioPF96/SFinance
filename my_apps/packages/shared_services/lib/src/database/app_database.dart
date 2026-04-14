@@ -24,7 +24,26 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onUpgrade: (migrator, from, to) async {
+        if (from < 2) {
+          // Add payment_day column (nullable for backward compatibility).
+          await migrator.addColumn(
+            recurringTemplates,
+            recurringTemplates.paymentDay,
+          );
+          // Backfill existing rows: treat all pre-feature templates as day 1.
+          await customStatement(
+            'UPDATE recurring_templates SET payment_day = 1 WHERE payment_day IS NULL',
+          );
+        }
+      },
+    );
+  }
 }
 
 LazyDatabase _openConnection() {

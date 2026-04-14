@@ -93,6 +93,15 @@ class IncomeForm extends ConsumerWidget {
                   ),
                 ],
 
+                // Día de cobro del salario — only for Salario
+                if (state.isSalario) ...[
+                  const SizedBox(height: 12),
+                  _DayDropdown(
+                    value: state.paymentDay,
+                    onChanged: notifier.setPaymentDay,
+                  ),
+                ],
+
                 // Extra pay month pickers — only for 14 pagas
                 if (state.isSalario && state.isCatorcepagas) ...[
                   const SizedBox(height: 12),
@@ -236,6 +245,30 @@ class _NumeroPagasDropdown extends StatelessWidget {
       decoration: const InputDecoration(labelText: 'Numero de pagas'),
       items: PayFrequency.values
           .map((p) => DropdownMenuItem(value: p, child: Text(p.displayLabel)))
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _DayDropdown extends StatelessWidget {
+  const _DayDropdown({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final int? value;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<int>(
+      value: value,
+      dropdownColor: AppColors.surface,
+      style: const TextStyle(color: AppColors.onBackground),
+      decoration: const InputDecoration(labelText: 'Día de cobro del salario'),
+      items: List.generate(31, (i) => i + 1)
+          .map((d) => DropdownMenuItem(value: d, child: Text('$d')))
           .toList(),
       onChanged: onChanged,
     );

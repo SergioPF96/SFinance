@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_services/shared_services.dart';
 import 'package:shared_ui/shared_ui.dart' hide TransactionRow;
 import 'package:shared_models/shared_models.dart';
@@ -18,6 +19,7 @@ class TransactionDisplay {
     required this.iconColor,
     required this.isRecurring,
     this.templateId,
+    this.recurringDetail,
   });
 
   final int id;
@@ -34,6 +36,29 @@ class TransactionDisplay {
 
   /// The originating template id, or null for one-off entries.
   final int? templateId;
+
+  /// Human-readable recurrence detail for the Entradas badge.
+  /// e.g. "Día 15 de cada mes", "10 de junio". Null for one-off entries.
+  final String? recurringDetail;
+}
+
+/// Builds the badge detail string for the Entradas list.
+///
+/// [transactionMonth] is used for annual entries to derive the month name
+/// (the transaction date's month equals the end date month for annual entries).
+/// Returns null for one-off entries or when paymentDay/periodicity is missing.
+String? _recurringDetail(
+    int? paymentDay, String? periodicity, int transactionMonth) {
+  if (paymentDay == null || periodicity == null) return null;
+  if (periodicity == 'mensual') {
+    return 'Día $paymentDay de cada mes';
+  }
+  if (periodicity == 'anual') {
+    final monthName =
+        DateFormat('MMMM', 'es').format(DateTime(2000, transactionMonth));
+    return '$paymentDay de $monthName';
+  }
+  return null;
 }
 
 /// Maps a raw [TransactionRow] to a UI-ready [TransactionDisplay].
@@ -42,7 +67,12 @@ class TransactionDisplay {
 /// - null  → one-off entry → isRecurring = false
 /// - false → active template → isRecurring = true
 /// - true  → cancelled template → isRecurring = false
-TransactionDisplay _toDisplay(TransactionRow row, {bool? templateIsDeleted}) {
+TransactionDisplay _toDisplay(
+  TransactionRow row, {
+  bool? templateIsDeleted,
+  int? templatePaymentDay,
+  String? templatePeriodicity,
+}) {
   final isIncome = row.transactionType == 'income';
   final type = isIncome ? TransactionType.income : TransactionType.expense;
   final color = isIncome ? AppColors.income : AppColors.expense;
@@ -56,6 +86,8 @@ TransactionDisplay _toDisplay(TransactionRow row, {bool? templateIsDeleted}) {
     label = cat?.displayLabel ?? row.category;
   }
 
+  final isActiveRecurring = row.templateId != null && templateIsDeleted == false;
+
   return TransactionDisplay(
     id: row.id,
     name: row.name,
@@ -64,8 +96,11 @@ TransactionDisplay _toDisplay(TransactionRow row, {bool? templateIsDeleted}) {
     amountCents: row.amountCents,
     transactionType: type,
     iconColor: color,
-    isRecurring: row.templateId != null && templateIsDeleted == false,
+    isRecurring: isActiveRecurring,
     templateId: row.templateId,
+    recurringDetail: isActiveRecurring
+        ? _recurringDetail(templatePaymentDay, templatePeriodicity, row.date.month)
+        : null,
   );
 }
 
@@ -110,6 +145,8 @@ final unifiedEntriesProvider =
                 (e) => _toDisplay(
                   e.transaction,
                   templateIsDeleted: e.templateIsDeleted,
+                  templatePaymentDay: e.templatePaymentDay,
+                  templatePeriodicity: e.templatePeriodicity,
                 ),
               )
               .toList(),

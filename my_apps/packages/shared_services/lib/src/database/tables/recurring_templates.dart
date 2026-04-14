@@ -27,6 +27,10 @@ class RecurringTemplates extends Table {
   /// 1–12. Must differ from extraPayMonth1.
   IntColumn get extraPayMonth2 => integer().nullable()();
 
+  /// Day of month for payment/charge (1–31). Null for pre-feature templates
+  /// (treated as 1 by application logic).
+  IntColumn get paymentDay => integer().nullable()();
+
   /// Period key of the last generated transaction. Null before first generation.
   TextColumn get lastGeneratedPeriod => text().nullable()();
 

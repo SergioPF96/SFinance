@@ -62,24 +62,42 @@ class RecurringGenerationService {
     return months;
   }
 
-  /// Derives a representative [DateTime] for a period key.
+  /// Number of days in a given [month] of [year].
+  static int _daysInMonth(int year, int month) =>
+      DateTime(year, month + 1, 0).day;
+
+  /// Derives a [DateTime] for a period key, using [template.paymentDay] for
+  /// the day within the month.
   ///
-  /// - Monthly "YYYY-MM" → first day of that month
-  /// - Monthly "YYYY-MM-extra" → first day of that month (same day as regular)
-  /// - Annual "YYYY" → January 1 of that year
+  /// - Monthly "YYYY-MM" → paymentDay of that month (clamped to month length)
+  /// - Monthly "YYYY-MM-extra" → same day as the regular monthly occurrence
+  /// - Annual "YYYY" → paymentDay of template.endDate.month in that year
   static DateTime _dateForPeriod(
       String periodKey, RecurringTemplateRow template) {
+    final paymentDay = template.paymentDay ?? 1;
+
     if (periodKey.endsWith('-extra')) {
       final base = periodKey.replaceAll('-extra', '');
       final parts = base.split('-');
-      return DateTime(int.parse(parts[0]), int.parse(parts[1]), 1);
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = paymentDay.clamp(1, _daysInMonth(year, month));
+      return DateTime(year, month, day);
     }
+
     final parts = periodKey.split('-');
     if (parts.length == 1) {
-      // Annual
-      return DateTime(int.parse(parts[0]), 1, 1);
+      // Annual — use template.endDate.month for the month
+      final year = int.parse(parts[0]);
+      final month = template.endDate.month;
+      final day = paymentDay.clamp(1, _daysInMonth(year, month));
+      return DateTime(year, month, day);
     }
+
     // Monthly
-    return DateTime(int.parse(parts[0]), int.parse(parts[1]), 1);
+    final year = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final day = paymentDay.clamp(1, _daysInMonth(year, month));
+    return DateTime(year, month, day);
   }
 }

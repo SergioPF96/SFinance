@@ -71,6 +71,7 @@ class EntradasView extends ConsumerWidget {
                     amountCents: entry.amountCents,
                     transactionType: entry.transactionType,
                     isRecurring: entry.isRecurring,
+                    recurringDetail: entry.recurringDetail,
                     onDelete: entry.isRecurring
                         ? () => _confirmDeleteRecurring(context, ref, entry)
                         : () => _confirmDeleteOneOff(context, ref, entry),

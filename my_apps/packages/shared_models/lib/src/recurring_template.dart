@@ -10,6 +10,7 @@ class RecurringTemplate {
     required this.transactionType,
     required this.category,
     required this.periodicity,
+    required this.paymentDay,
     required this.startDate,
     required this.endDate,
     this.payFrequency,
@@ -32,6 +33,11 @@ class RecurringTemplate {
   final String category;
 
   final Periodicity periodicity;
+
+  /// Day of month (1–31) when this recurring entry is charged or paid.
+  /// Immutable after creation (FR-006). Clamped to month length at generation time.
+  final int paymentDay;
+
   final DateTime startDate;
   final DateTime endDate;
 

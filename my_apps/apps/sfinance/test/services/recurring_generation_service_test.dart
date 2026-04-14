@@ -35,6 +35,7 @@ Future<int> insertTemplate(
   String? payFrequency,
   int? extraPayMonth1,
   int? extraPayMonth2,
+  int? paymentDay,
 }) async {
   return db.into(db.recurringTemplates).insert(
         RecurringTemplatesCompanion.insert(
@@ -50,6 +51,7 @@ Future<int> insertTemplate(
           payFrequency: Value(payFrequency),
           extraPayMonth1: Value(extraPayMonth1),
           extraPayMonth2: Value(extraPayMonth2),
+          paymentDay: Value(paymentDay),
         ),
       );
 }
@@ -219,6 +221,157 @@ void main() {
       final txs = await getTransactions(db);
 
       expect(txs.length, 2); // 2025 and 2026
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // T006 — _dateForPeriod() with paymentDay (monthly + annual)
+  // These tests FAIL until T008 and T016 are implemented.
+  // -------------------------------------------------------------------------
+  group('_dateForPeriod() with paymentDay — T006', () {
+    test('monthly: paymentDay=15 → 15th of period month', () async {
+      final container = makeContainer();
+      final db = container.read(databaseProvider);
+
+      await insertTemplate(db,
+          name: 'Sub 15',
+          periodicity: 'mensual',
+          startDate: DateTime(2026, 4, 1),
+          endDate: DateTime(2027, 12, 31),
+          lastGeneratedPeriod: '2026-03',
+          transactionType: 'expense',
+          category: 'suscripcion',
+          paymentDay: 15,
+      );
+
+      final today = DateTime(2026, 4, 15);
+      await RecurringGenerationService.run(db, today: today);
+      final txs = await getTransactions(db);
+
+      expect(txs.length, 1);
+      expect(txs.first.date.day, 15,
+          reason: 'Transaction date must be the 15th');
+    });
+
+    test('monthly: paymentDay=31 in February → last day of Feb (28)', () async {
+      final container = makeContainer();
+      final db = container.read(databaseProvider);
+
+      await insertTemplate(db,
+          name: 'Sub 31',
+          periodicity: 'mensual',
+          startDate: DateTime(2026, 2, 1),
+          endDate: DateTime(2027, 12, 31),
+          lastGeneratedPeriod: '2026-01',
+          transactionType: 'expense',
+          category: 'suscripcion',
+          paymentDay: 31,
+      );
+
+      final today = DateTime(2026, 2, 28);
+      await RecurringGenerationService.run(db, today: today);
+      final txs = await getTransactions(db);
+
+      expect(txs.length, 1);
+      expect(txs.first.date, DateTime(2026, 2, 28),
+          reason: 'Day 31 clamped to 28 in February 2026');
+    });
+
+    test('monthly: paymentDay=31 in March → 31st of March', () async {
+      final container = makeContainer();
+      final db = container.read(databaseProvider);
+
+      await insertTemplate(db,
+          name: 'Sub 31',
+          periodicity: 'mensual',
+          startDate: DateTime(2026, 3, 1),
+          endDate: DateTime(2027, 12, 31),
+          lastGeneratedPeriod: '2026-02',
+          transactionType: 'expense',
+          category: 'suscripcion',
+          paymentDay: 31,
+      );
+
+      final today = DateTime(2026, 3, 31);
+      await RecurringGenerationService.run(db, today: today);
+      final txs = await getTransactions(db);
+
+      expect(txs.length, 1);
+      expect(txs.first.date, DateTime(2026, 3, 31),
+          reason: 'March has 31 days — no clamping needed');
+    });
+
+    test('annual: paymentDay=10, endDate.month=6 → June 10 of period year', () async {
+      final container = makeContainer();
+      final db = container.read(databaseProvider);
+
+      await insertTemplate(db,
+          name: 'Seguro Anual',
+          periodicity: 'anual',
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 6, 30), // June
+          lastGeneratedPeriod: '2025',
+          transactionType: 'expense',
+          category: 'suscripcion',
+          paymentDay: 10,
+      );
+
+      final today = DateTime(2026, 6, 30);
+      await RecurringGenerationService.run(db, today: today);
+      final txs = await getTransactions(db);
+
+      expect(txs.length, 1);
+      expect(txs.first.date, DateTime(2026, 6, 10),
+          reason: 'Annual: paymentDay=10, month=June → June 10');
+    });
+
+    test('annual: paymentDay=30, endDate.month=2 → Feb 28 (non-leap)', () async {
+      final container = makeContainer();
+      final db = container.read(databaseProvider);
+
+      await insertTemplate(db,
+          name: 'Seguro Feb',
+          periodicity: 'anual',
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 2, 28), // February
+          lastGeneratedPeriod: '2025',
+          transactionType: 'expense',
+          category: 'suscripcion',
+          paymentDay: 30,
+      );
+
+      final today = DateTime(2026, 2, 28);
+      await RecurringGenerationService.run(db, today: today);
+      final txs = await getTransactions(db);
+
+      expect(txs.length, 1);
+      expect(txs.first.date, DateTime(2026, 2, 28),
+          reason: 'Annual Feb (non-leap): day 30 clamps to 28');
+    });
+
+    test('annual: paymentDay=29, endDate.month=2, leap year 2028 → Feb 29', () async {
+      final container = makeContainer();
+      final db = container.read(databaseProvider);
+
+      // endDate month = February; year is irrelevant for month extraction
+      await insertTemplate(db,
+          name: 'Seguro Leap',
+          periodicity: 'anual',
+          startDate: DateTime(2028, 1, 1),
+          endDate: DateTime(2028, 2, 29), // February in a leap year
+          lastGeneratedPeriod: '2027',
+          transactionType: 'expense',
+          category: 'suscripcion',
+          paymentDay: 29,
+      );
+
+      final today = DateTime(2028, 2, 29);
+      await RecurringGenerationService.run(db, today: today);
+      final txs = await getTransactions(db);
+
+      expect(txs.length, 1);
+      expect(txs.first.date, DateTime(2028, 2, 29),
+          reason: 'Annual Feb (leap year 2028): day 29 exists → Feb 29');
     });
   });
 }
