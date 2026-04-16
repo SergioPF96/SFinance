@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_services/shared_services.dart';
 import 'dao_providers.dart';
+import 'database_provider.dart';
+import '../services/recurring_generation_service.dart';
 
 // ---------------------------------------------------------------------------
 // Expense Form
@@ -139,66 +141,88 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
       final dao = ref.read(transactionDaoProvider);
 
       if (s.isRecurring) {
-        // Create RecurringTemplate + first Transaction entry
+        // Create RecurringTemplate, then delegate first-entry generation to
+        // RecurringGenerationService (which uses PeriodGenerator with
+        // date-level filtering).
         final templateDao = ref.read(templateDaoProvider);
+        final db = ref.read(databaseProvider);
         final today = DateTime.now();
         final paymentDay = s.paymentDay!;
 
-        // Compute first-occurrence date using paymentDay skip logic.
-        final DateTime firstDate;
-        final String periodKey;
         if (s.periodicidad == Periodicity.mensual) {
+          // Compute startDate: if paymentDay already passed this month, the
+          // first eligible month is next month; otherwise it is this month.
+          // PeriodGenerator's date-level filter then decides whether to
+          // generate the entry immediately (paymentDay == today) or defer it.
           final daysThisMonth =
               DateTime(today.year, today.month + 1, 0).day;
           final clampedDay = paymentDay.clamp(1, daysThisMonth);
+          final DateTime startDate;
           if (clampedDay < today.day) {
-            // Day already passed this month → next month
-            final nextMonth = DateTime(today.year, today.month + 1);
-            final daysNext =
-                DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
-            final clampedNext = paymentDay.clamp(1, daysNext);
-            firstDate =
-                DateTime(nextMonth.year, nextMonth.month, clampedNext);
+            // Day already passed this month → first eligible month is next month
+            startDate = DateTime(today.year, today.month + 1, 1);
           } else {
-            firstDate = DateTime(today.year, today.month, clampedDay);
+            startDate = DateTime(today.year, today.month, 1);
           }
-          periodKey =
-              '${firstDate.year}-${firstDate.month.toString().padLeft(2, '0')}';
+
+          final templateId = await templateDao.insert(
+            RecurringTemplatesCompanion.insert(
+              name: trimmedNombre,
+              amountCents: amountCents,
+              transactionType: 'expense',
+              category: s.categoria!.name,
+              periodicity: s.periodicidad!.name,
+              startDate: startDate,
+              endDate: s.fechaFin!,
+              paymentDay: Value(paymentDay),
+            ),
+          );
+
+          // Fetch the saved template row and delegate entry generation.
+          // generateForTemplate() will produce an entry only if paymentDay
+          // has arrived (≤ today); otherwise it does nothing and the entry
+          // will be created on the next app launch when the date arrives.
+          final template = await (db.select(db.recurringTemplates)
+                ..where((t) => t.id.equals(templateId)))
+              .getSingle();
+          await RecurringGenerationService.generateForTemplate(
+            db,
+            template,
+            today: today,
+          );
         } else {
-          // Annual — first occurrence is in the year's endDate month
-          firstDate = today;
-          periodKey = '${today.year}';
+          // Annual — keep existing behavior: generate first entry for today
+          // (annual out of scope for this feature).
+          final firstDate = today;
+          final periodKey = '${today.year}';
+          final startDate = DateTime(firstDate.year, firstDate.month, 1);
+
+          final templateId = await templateDao.insert(
+            RecurringTemplatesCompanion.insert(
+              name: trimmedNombre,
+              amountCents: amountCents,
+              transactionType: 'expense',
+              category: s.categoria!.name,
+              periodicity: s.periodicidad!.name,
+              startDate: startDate,
+              endDate: s.fechaFin!,
+              paymentDay: Value(paymentDay),
+            ),
+          );
+
+          await dao.insert(
+            TransactionsCompanion.insert(
+              name: trimmedNombre,
+              amountCents: amountCents,
+              transactionType: 'expense',
+              category: s.categoria!.name,
+              date: firstDate,
+              templateId: Value(templateId),
+            ),
+          );
+
+          await templateDao.updateLastGeneratedPeriod(templateId, periodKey);
         }
-
-        // startDate = first of the firstDate month so PeriodGenerator
-        // includes the correct first period.
-        final startDate = DateTime(firstDate.year, firstDate.month, 1);
-
-        final templateId = await templateDao.insert(
-          RecurringTemplatesCompanion.insert(
-            name: trimmedNombre,
-            amountCents: amountCents,
-            transactionType: 'expense',
-            category: s.categoria!.name,
-            periodicity: s.periodicidad!.name,
-            startDate: startDate,
-            endDate: s.fechaFin!,
-            paymentDay: Value(paymentDay),
-          ),
-        );
-
-        await dao.insert(
-          TransactionsCompanion.insert(
-            name: trimmedNombre,
-            amountCents: amountCents,
-            transactionType: 'expense',
-            category: s.categoria!.name,
-            date: firstDate,
-            templateId: Value(templateId),
-          ),
-        );
-
-        await templateDao.updateLastGeneratedPeriod(templateId, periodKey);
       } else {
         // One-off expense
         final today = DateTime.now();
@@ -376,34 +400,24 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
       final today = DateTime.now();
 
       if (s.isSalario) {
+        // Salario is always monthly — compute startDate using skip logic, then
+        // delegate first-entry generation to RecurringGenerationService.
         final templateDao = ref.read(templateDaoProvider);
+        final db = ref.read(databaseProvider);
         final paymentDay = s.paymentDay!;
 
-        // Compute first-occurrence date using paymentDay skip logic.
+        // Determine the first eligible month (same skip logic as expense).
         final daysThisMonth = DateTime(today.year, today.month + 1, 0).day;
         final clampedDay = paymentDay.clamp(1, daysThisMonth);
-        final DateTime firstDate;
+        final DateTime startDate;
         if (clampedDay < today.day) {
-          final nextMonth = DateTime(today.year, today.month + 1);
-          final daysNext =
-              DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
-          final clampedNext = paymentDay.clamp(1, daysNext);
-          firstDate = DateTime(nextMonth.year, nextMonth.month, clampedNext);
+          startDate = DateTime(today.year, today.month + 1, 1);
         } else {
-          firstDate = DateTime(today.year, today.month, clampedDay);
+          startDate = DateTime(today.year, today.month, 1);
         }
-
-        final periodKey =
-            '${firstDate.year}-${firstDate.month.toString().padLeft(2, '0')}';
-
-        // startDate = first of the firstDate month
-        final startDate = DateTime(firstDate.year, firstDate.month, 1);
 
         // End date = far future for open-ended salary
         final farFuture = DateTime(today.year + 50, 12, 31);
-        final extraMonths = s.isCatorcepagas
-            ? [s.primeraPagaExtra!, s.segundaPagaExtra!]
-            : <int>[];
 
         final templateId = await templateDao.insert(
           RecurringTemplatesCompanion.insert(
@@ -423,37 +437,16 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
           ),
         );
 
-        await dao.insert(
-          TransactionsCompanion.insert(
-            name: trimmedNombre,
-            amountCents: amountCents,
-            transactionType: 'income',
-            category: IncomeCategory.salario.name,
-            date: firstDate,
-            templateId: Value(templateId),
-            description: Value(s.descripcion.trim().isEmpty
-                ? null
-                : s.descripcion.trim()),
-          ),
+        // Fetch saved template and delegate entry generation. The service
+        // handles both regular and 14-paga extra entries via PeriodGenerator.
+        final template = await (db.select(db.recurringTemplates)
+              ..where((t) => t.id.equals(templateId)))
+            .getSingle();
+        await RecurringGenerationService.generateForTemplate(
+          db,
+          template,
+          today: today,
         );
-
-        // Also generate extra entry if firstDate's month is a bonus month
-        if (extraMonths.contains(firstDate.month)) {
-          await dao.insert(
-            TransactionsCompanion.insert(
-              name: trimmedNombre,
-              amountCents: amountCents,
-              transactionType: 'income',
-              category: IncomeCategory.salario.name,
-              date: firstDate,
-              templateId: Value(templateId),
-            ),
-          );
-          await templateDao.updateLastGeneratedPeriod(
-              templateId, '$periodKey-extra');
-        } else {
-          await templateDao.updateLastGeneratedPeriod(templateId, periodKey);
-        }
       } else {
         // One-off income
         await dao.insert(
