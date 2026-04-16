@@ -183,7 +183,7 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 
 #### Recurring Entry Generation
 
-- **FR-013**: When a Suscripción, Financiación, or Salario entry is saved, the start date is always today (no user-configurable back-dating). The system MUST immediately generate exactly one transaction entry for today's period. Subsequent entries are generated on future app launches as each period arrives.
+- **FR-013**: ~~When a Suscripción, Financiación, or Salario entry is saved, the start date is always today (no user-configurable back-dating). The system MUST immediately generate exactly one transaction entry for today's period. Subsequent entries are generated on future app launches as each period arrives.~~ **Superseded by spec 006 FR-001**: The first entry is generated immediately only if `paymentDay` equals today's day-of-month; if `paymentDay` is still in the future this month, the entry is deferred to that day; if `paymentDay` already passed this month, the first entry is deferred to `paymentDay` of the next month.
 - **FR-014**: Future occurrences MUST NOT be pre-generated at save time; they MUST be created on app launch when their date has arrived.
 - **FR-015**: Generated recurring entries MUST appear in transaction lists and charts identically to one-off transactions, with no visual distinction.
 - **FR-016**: For a 14-paga salary, extra-payment months MUST generate one additional transaction entry of the same monthly amount, in addition to the regular monthly entry for those months.
@@ -246,7 +246,7 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 - **SC-001**: The user can record any transaction (one-off or recurring) in under 60 seconds from opening the entry modal to seeing it confirmed in the transaction list.
 - **SC-002**: All KPI values (Ingresos, Gastos, Balance) always reflect the correct calculated totals; no stale or cached values are ever displayed.
 - **SC-003**: Every displayed monetary amount includes an explicit currency symbol (€), locale-formatted separators, and an explicit sign (+ or −); no amount is displayed without all three elements.
-- **SC-004**: On first save, a recurring entry generates exactly one transaction entry (for today's period). On each subsequent app launch, exactly one new entry is created per due period, with zero duplicate entries ever created for already-generated periods.
+- **SC-004**: ~~On first save, a recurring entry generates exactly one transaction entry (for today's period). On each subsequent app launch, exactly one new entry is created per due period, with zero duplicate entries ever created for already-generated periods.~~ **Superseded by spec 006 SC-001**: The first entry is generated on `paymentDay` of the correct month (current if `paymentDay >= today`, next month if `paymentDay < today`). No premature or duplicate entries are ever created.
 - **SC-005**: The application launches and displays the Resumen view with correct data within 3 seconds on the target desktop hardware, regardless of transaction volume.
 - **SC-006**: All interactive elements in the application can be reached and activated using only keyboard input, with no mouse or pointer device required.
 - **SC-007**: All text elements and interactive controls pass WCAG AA contrast ratio validation (minimum 4.5:1 for normal text, 3:1 for large text and UI components).

@@ -77,6 +77,12 @@ class $RecurringTemplatesTable extends RecurringTemplates
   late final GeneratedColumn<int> extraPayMonth2 = GeneratedColumn<int>(
       'extra_pay_month2', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _paymentDayMeta =
+      const VerificationMeta('paymentDay');
+  @override
+  late final GeneratedColumn<int> paymentDay = GeneratedColumn<int>(
+      'payment_day', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _lastGeneratedPeriodMeta =
       const VerificationMeta('lastGeneratedPeriod');
   @override
@@ -114,6 +120,7 @@ class $RecurringTemplatesTable extends RecurringTemplates
         payFrequency,
         extraPayMonth1,
         extraPayMonth2,
+        paymentDay,
         lastGeneratedPeriod,
         isDeleted,
         createdAt
@@ -198,6 +205,12 @@ class $RecurringTemplatesTable extends RecurringTemplates
           extraPayMonth2.isAcceptableOrUnknown(
               data['extra_pay_month2']!, _extraPayMonth2Meta));
     }
+    if (data.containsKey('payment_day')) {
+      context.handle(
+          _paymentDayMeta,
+          paymentDay.isAcceptableOrUnknown(
+              data['payment_day']!, _paymentDayMeta));
+    }
     if (data.containsKey('last_generated_period')) {
       context.handle(
           _lastGeneratedPeriodMeta,
@@ -243,6 +256,8 @@ class $RecurringTemplatesTable extends RecurringTemplates
           .read(DriftSqlType.int, data['${effectivePrefix}extra_pay_month1']),
       extraPayMonth2: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}extra_pay_month2']),
+      paymentDay: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}payment_day']),
       lastGeneratedPeriod: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}last_generated_period']),
       isDeleted: attachedDatabase.typeMapping
@@ -284,6 +299,10 @@ class RecurringTemplateRow extends DataClass
   /// 1–12. Must differ from extraPayMonth1.
   final int? extraPayMonth2;
 
+  /// Day of month for payment/charge (1–31). Null for pre-feature templates
+  /// (treated as 1 by application logic).
+  final int? paymentDay;
+
   /// Period key of the last generated transaction. Null before first generation.
   final String? lastGeneratedPeriod;
   final bool isDeleted;
@@ -300,6 +319,7 @@ class RecurringTemplateRow extends DataClass
       this.payFrequency,
       this.extraPayMonth1,
       this.extraPayMonth2,
+      this.paymentDay,
       this.lastGeneratedPeriod,
       required this.isDeleted,
       required this.createdAt});
@@ -322,6 +342,9 @@ class RecurringTemplateRow extends DataClass
     }
     if (!nullToAbsent || extraPayMonth2 != null) {
       map['extra_pay_month2'] = Variable<int>(extraPayMonth2);
+    }
+    if (!nullToAbsent || paymentDay != null) {
+      map['payment_day'] = Variable<int>(paymentDay);
     }
     if (!nullToAbsent || lastGeneratedPeriod != null) {
       map['last_generated_period'] = Variable<String>(lastGeneratedPeriod);
@@ -350,6 +373,9 @@ class RecurringTemplateRow extends DataClass
       extraPayMonth2: extraPayMonth2 == null && nullToAbsent
           ? const Value.absent()
           : Value(extraPayMonth2),
+      paymentDay: paymentDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentDay),
       lastGeneratedPeriod: lastGeneratedPeriod == null && nullToAbsent
           ? const Value.absent()
           : Value(lastGeneratedPeriod),
@@ -373,6 +399,7 @@ class RecurringTemplateRow extends DataClass
       payFrequency: serializer.fromJson<String?>(json['payFrequency']),
       extraPayMonth1: serializer.fromJson<int?>(json['extraPayMonth1']),
       extraPayMonth2: serializer.fromJson<int?>(json['extraPayMonth2']),
+      paymentDay: serializer.fromJson<int?>(json['paymentDay']),
       lastGeneratedPeriod:
           serializer.fromJson<String?>(json['lastGeneratedPeriod']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
@@ -394,6 +421,7 @@ class RecurringTemplateRow extends DataClass
       'payFrequency': serializer.toJson<String?>(payFrequency),
       'extraPayMonth1': serializer.toJson<int?>(extraPayMonth1),
       'extraPayMonth2': serializer.toJson<int?>(extraPayMonth2),
+      'paymentDay': serializer.toJson<int?>(paymentDay),
       'lastGeneratedPeriod': serializer.toJson<String?>(lastGeneratedPeriod),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -412,6 +440,7 @@ class RecurringTemplateRow extends DataClass
           Value<String?> payFrequency = const Value.absent(),
           Value<int?> extraPayMonth1 = const Value.absent(),
           Value<int?> extraPayMonth2 = const Value.absent(),
+          Value<int?> paymentDay = const Value.absent(),
           Value<String?> lastGeneratedPeriod = const Value.absent(),
           bool? isDeleted,
           DateTime? createdAt}) =>
@@ -430,6 +459,7 @@ class RecurringTemplateRow extends DataClass
             extraPayMonth1.present ? extraPayMonth1.value : this.extraPayMonth1,
         extraPayMonth2:
             extraPayMonth2.present ? extraPayMonth2.value : this.extraPayMonth2,
+        paymentDay: paymentDay.present ? paymentDay.value : this.paymentDay,
         lastGeneratedPeriod: lastGeneratedPeriod.present
             ? lastGeneratedPeriod.value
             : this.lastGeneratedPeriod,
@@ -459,6 +489,8 @@ class RecurringTemplateRow extends DataClass
       extraPayMonth2: data.extraPayMonth2.present
           ? data.extraPayMonth2.value
           : this.extraPayMonth2,
+      paymentDay:
+          data.paymentDay.present ? data.paymentDay.value : this.paymentDay,
       lastGeneratedPeriod: data.lastGeneratedPeriod.present
           ? data.lastGeneratedPeriod.value
           : this.lastGeneratedPeriod,
@@ -481,6 +513,7 @@ class RecurringTemplateRow extends DataClass
           ..write('payFrequency: $payFrequency, ')
           ..write('extraPayMonth1: $extraPayMonth1, ')
           ..write('extraPayMonth2: $extraPayMonth2, ')
+          ..write('paymentDay: $paymentDay, ')
           ..write('lastGeneratedPeriod: $lastGeneratedPeriod, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('createdAt: $createdAt')
@@ -501,6 +534,7 @@ class RecurringTemplateRow extends DataClass
       payFrequency,
       extraPayMonth1,
       extraPayMonth2,
+      paymentDay,
       lastGeneratedPeriod,
       isDeleted,
       createdAt);
@@ -519,6 +553,7 @@ class RecurringTemplateRow extends DataClass
           other.payFrequency == this.payFrequency &&
           other.extraPayMonth1 == this.extraPayMonth1 &&
           other.extraPayMonth2 == this.extraPayMonth2 &&
+          other.paymentDay == this.paymentDay &&
           other.lastGeneratedPeriod == this.lastGeneratedPeriod &&
           other.isDeleted == this.isDeleted &&
           other.createdAt == this.createdAt);
@@ -537,6 +572,7 @@ class RecurringTemplatesCompanion
   final Value<String?> payFrequency;
   final Value<int?> extraPayMonth1;
   final Value<int?> extraPayMonth2;
+  final Value<int?> paymentDay;
   final Value<String?> lastGeneratedPeriod;
   final Value<bool> isDeleted;
   final Value<DateTime> createdAt;
@@ -552,6 +588,7 @@ class RecurringTemplatesCompanion
     this.payFrequency = const Value.absent(),
     this.extraPayMonth1 = const Value.absent(),
     this.extraPayMonth2 = const Value.absent(),
+    this.paymentDay = const Value.absent(),
     this.lastGeneratedPeriod = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -568,6 +605,7 @@ class RecurringTemplatesCompanion
     this.payFrequency = const Value.absent(),
     this.extraPayMonth1 = const Value.absent(),
     this.extraPayMonth2 = const Value.absent(),
+    this.paymentDay = const Value.absent(),
     this.lastGeneratedPeriod = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -590,6 +628,7 @@ class RecurringTemplatesCompanion
     Expression<String>? payFrequency,
     Expression<int>? extraPayMonth1,
     Expression<int>? extraPayMonth2,
+    Expression<int>? paymentDay,
     Expression<String>? lastGeneratedPeriod,
     Expression<bool>? isDeleted,
     Expression<DateTime>? createdAt,
@@ -606,6 +645,7 @@ class RecurringTemplatesCompanion
       if (payFrequency != null) 'pay_frequency': payFrequency,
       if (extraPayMonth1 != null) 'extra_pay_month1': extraPayMonth1,
       if (extraPayMonth2 != null) 'extra_pay_month2': extraPayMonth2,
+      if (paymentDay != null) 'payment_day': paymentDay,
       if (lastGeneratedPeriod != null)
         'last_generated_period': lastGeneratedPeriod,
       if (isDeleted != null) 'is_deleted': isDeleted,
@@ -625,6 +665,7 @@ class RecurringTemplatesCompanion
       Value<String?>? payFrequency,
       Value<int?>? extraPayMonth1,
       Value<int?>? extraPayMonth2,
+      Value<int?>? paymentDay,
       Value<String?>? lastGeneratedPeriod,
       Value<bool>? isDeleted,
       Value<DateTime>? createdAt}) {
@@ -640,6 +681,7 @@ class RecurringTemplatesCompanion
       payFrequency: payFrequency ?? this.payFrequency,
       extraPayMonth1: extraPayMonth1 ?? this.extraPayMonth1,
       extraPayMonth2: extraPayMonth2 ?? this.extraPayMonth2,
+      paymentDay: paymentDay ?? this.paymentDay,
       lastGeneratedPeriod: lastGeneratedPeriod ?? this.lastGeneratedPeriod,
       isDeleted: isDeleted ?? this.isDeleted,
       createdAt: createdAt ?? this.createdAt,
@@ -682,6 +724,9 @@ class RecurringTemplatesCompanion
     if (extraPayMonth2.present) {
       map['extra_pay_month2'] = Variable<int>(extraPayMonth2.value);
     }
+    if (paymentDay.present) {
+      map['payment_day'] = Variable<int>(paymentDay.value);
+    }
     if (lastGeneratedPeriod.present) {
       map['last_generated_period'] =
           Variable<String>(lastGeneratedPeriod.value);
@@ -709,6 +754,7 @@ class RecurringTemplatesCompanion
           ..write('payFrequency: $payFrequency, ')
           ..write('extraPayMonth1: $extraPayMonth1, ')
           ..write('extraPayMonth2: $extraPayMonth2, ')
+          ..write('paymentDay: $paymentDay, ')
           ..write('lastGeneratedPeriod: $lastGeneratedPeriod, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('createdAt: $createdAt')
@@ -1448,6 +1494,7 @@ typedef $$RecurringTemplatesTableCreateCompanionBuilder
   Value<String?> payFrequency,
   Value<int?> extraPayMonth1,
   Value<int?> extraPayMonth2,
+  Value<int?> paymentDay,
   Value<String?> lastGeneratedPeriod,
   Value<bool> isDeleted,
   Value<DateTime> createdAt,
@@ -1465,6 +1512,7 @@ typedef $$RecurringTemplatesTableUpdateCompanionBuilder
   Value<String?> payFrequency,
   Value<int?> extraPayMonth1,
   Value<int?> extraPayMonth2,
+  Value<int?> paymentDay,
   Value<String?> lastGeneratedPeriod,
   Value<bool> isDeleted,
   Value<DateTime> createdAt,
@@ -1535,6 +1583,9 @@ class $$RecurringTemplatesTableFilterComposer
   ColumnFilters<int> get extraPayMonth2 => $composableBuilder(
       column: $table.extraPayMonth2,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get paymentDay => $composableBuilder(
+      column: $table.paymentDay, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get lastGeneratedPeriod => $composableBuilder(
       column: $table.lastGeneratedPeriod,
@@ -1614,6 +1665,9 @@ class $$RecurringTemplatesTableOrderingComposer
       column: $table.extraPayMonth2,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get paymentDay => $composableBuilder(
+      column: $table.paymentDay, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get lastGeneratedPeriod => $composableBuilder(
       column: $table.lastGeneratedPeriod,
       builder: (column) => ColumnOrderings(column));
@@ -1666,6 +1720,9 @@ class $$RecurringTemplatesTableAnnotationComposer
 
   GeneratedColumn<int> get extraPayMonth2 => $composableBuilder(
       column: $table.extraPayMonth2, builder: (column) => column);
+
+  GeneratedColumn<int> get paymentDay => $composableBuilder(
+      column: $table.paymentDay, builder: (column) => column);
 
   GeneratedColumn<String> get lastGeneratedPeriod => $composableBuilder(
       column: $table.lastGeneratedPeriod, builder: (column) => column);
@@ -1734,6 +1791,7 @@ class $$RecurringTemplatesTableTableManager extends RootTableManager<
             Value<String?> payFrequency = const Value.absent(),
             Value<int?> extraPayMonth1 = const Value.absent(),
             Value<int?> extraPayMonth2 = const Value.absent(),
+            Value<int?> paymentDay = const Value.absent(),
             Value<String?> lastGeneratedPeriod = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -1750,6 +1808,7 @@ class $$RecurringTemplatesTableTableManager extends RootTableManager<
             payFrequency: payFrequency,
             extraPayMonth1: extraPayMonth1,
             extraPayMonth2: extraPayMonth2,
+            paymentDay: paymentDay,
             lastGeneratedPeriod: lastGeneratedPeriod,
             isDeleted: isDeleted,
             createdAt: createdAt,
@@ -1766,6 +1825,7 @@ class $$RecurringTemplatesTableTableManager extends RootTableManager<
             Value<String?> payFrequency = const Value.absent(),
             Value<int?> extraPayMonth1 = const Value.absent(),
             Value<int?> extraPayMonth2 = const Value.absent(),
+            Value<int?> paymentDay = const Value.absent(),
             Value<String?> lastGeneratedPeriod = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -1782,6 +1842,7 @@ class $$RecurringTemplatesTableTableManager extends RootTableManager<
             payFrequency: payFrequency,
             extraPayMonth1: extraPayMonth1,
             extraPayMonth2: extraPayMonth2,
+            paymentDay: paymentDay,
             lastGeneratedPeriod: lastGeneratedPeriod,
             isDeleted: isDeleted,
             createdAt: createdAt,

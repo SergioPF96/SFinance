@@ -89,6 +89,16 @@ class ExpenseForm extends ConsumerWidget {
                 ),
               ],
 
+              // Día de cobro/pago — for monthly recurring
+              if (state.isRecurring &&
+                  state.periodicidad == Periodicity.mensual) ...[
+                const SizedBox(height: 12),
+                _DayDropdown(
+                  value: state.paymentDay,
+                  onChanged: notifier.setPaymentDay,
+                ),
+              ],
+
               // Fecha de fin (only when periodicidad is set)
               if (state.isRecurring && state.periodicidad != null) ...[
                 const SizedBox(height: 12),
@@ -96,6 +106,20 @@ class ExpenseForm extends ConsumerWidget {
                   periodicidad: state.periodicidad!,
                   value: state.fechaFin,
                   onChanged: notifier.setFechaFin,
+                ),
+              ],
+
+              // Día de cobro/pago — for annual recurring (after fechaFin is set)
+              if (state.isRecurring &&
+                  state.periodicidad == Periodicity.anual &&
+                  state.fechaFin != null) ...[
+                const SizedBox(height: 12),
+                _DayDropdown(
+                  value: state.paymentDay,
+                  maxDay: DateTime(
+                          state.fechaFin!.year, state.fechaFin!.month + 1, 0)
+                      .day,
+                  onChanged: notifier.setPaymentDay,
                 ),
               ],
 
@@ -221,6 +245,32 @@ class _PeriodicidadDropdown extends StatelessWidget {
       decoration: const InputDecoration(labelText: 'Periodicidad'),
       items: Periodicity.values
           .map((p) => DropdownMenuItem(value: p, child: Text(p.displayLabel)))
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _DayDropdown extends StatelessWidget {
+  const _DayDropdown({
+    required this.value,
+    required this.onChanged,
+    this.maxDay = 31,
+  });
+
+  final int? value;
+  final ValueChanged<int?> onChanged;
+  final int maxDay;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<int>(
+      value: value != null && value! <= maxDay ? value : null,
+      dropdownColor: AppColors.surface,
+      style: const TextStyle(color: AppColors.onBackground),
+      decoration: const InputDecoration(labelText: 'Día de cobro/pago'),
+      items: List.generate(maxDay, (i) => i + 1)
+          .map((d) => DropdownMenuItem(value: d, child: Text('$d')))
           .toList(),
       onChanged: onChanged,
     );

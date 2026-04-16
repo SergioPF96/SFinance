@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_services/shared_services.dart';
 import 'dao_providers.dart';
-import 'kpi_provider.dart';
+import 'database_provider.dart';
+import '../services/recurring_generation_service.dart';
 
 // ---------------------------------------------------------------------------
 // Expense Form
@@ -17,6 +18,7 @@ class ExpenseFormState {
     this.categoria,
     this.periodicidad,
     this.fechaFin,
+    this.paymentDay,
     this.isSubmitting = false,
     this.errorMessage,
   });
@@ -27,6 +29,10 @@ class ExpenseFormState {
   final ExpenseCategory? categoria;
   final Periodicity? periodicidad;
   final DateTime? fechaFin;
+
+  /// Day of month (1–31) selected for recurring expenses. Null until set.
+  final int? paymentDay;
+
   final bool isSubmitting;
   final String? errorMessage;
 
@@ -41,6 +47,7 @@ class ExpenseFormState {
     ExpenseCategory? categoria,
     Object? periodicidad = _sentinel,
     Object? fechaFin = _sentinel,
+    Object? paymentDay = _sentinel,
     bool? isSubmitting,
     Object? errorMessage = _sentinel,
   }) {
@@ -53,6 +60,8 @@ class ExpenseFormState {
           ? this.periodicidad
           : periodicidad as Periodicity?,
       fechaFin: fechaFin == _sentinel ? this.fechaFin : fechaFin as DateTime?,
+      paymentDay:
+          paymentDay == _sentinel ? this.paymentDay : paymentDay as int?,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: errorMessage == _sentinel
           ? this.errorMessage
@@ -78,13 +87,25 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
       categoria: v,
       periodicidad: null,
       fechaFin: null,
+      paymentDay: null,
     );
   }
 
   void setPeriodicidad(Periodicity? v) =>
-      state = state.copyWith(periodicidad: v, fechaFin: null);
+      state = state.copyWith(periodicidad: v, fechaFin: null, paymentDay: null);
 
-  void setFechaFin(DateTime? v) => state = state.copyWith(fechaFin: v);
+  void setFechaFin(DateTime? v) {
+    if (v != null && state.periodicidad == Periodicity.anual) {
+      // Clamp paymentDay to the new month's length (FR-009)
+      final maxDay = DateTime(v.year, v.month + 1, 0).day;
+      final clamped = state.paymentDay?.clamp(1, maxDay);
+      state = state.copyWith(fechaFin: v, paymentDay: clamped);
+    } else {
+      state = state.copyWith(fechaFin: v);
+    }
+  }
+
+  void setPaymentDay(int? v) => state = state.copyWith(paymentDay: v);
 
   /// Validates and submits the form.
   /// Returns null on success, error message string on failure.
@@ -109,51 +130,102 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
       if (s.fechaFin!.isBefore(DateTime(today.year, today.month, today.day))) {
         return 'La fecha de fin debe ser hoy o posterior';
       }
+      if (s.paymentDay == null) {
+        return 'Selecciona el día de cobro/pago';
+      }
     }
 
     state = state.copyWith(isSubmitting: true, errorMessage: null);
 
     try {
       final dao = ref.read(transactionDaoProvider);
-      final capitalDao = ref.read(initialCapitalDaoProvider);
 
       if (s.isRecurring) {
-        // Create RecurringTemplate + first Transaction entry
+        // Create RecurringTemplate, then delegate first-entry generation to
+        // RecurringGenerationService (which uses PeriodGenerator with
+        // date-level filtering).
         final templateDao = ref.read(templateDaoProvider);
+        final db = ref.read(databaseProvider);
         final today = DateTime.now();
+        final paymentDay = s.paymentDay!;
 
-        final templateId = await templateDao.insert(
-          RecurringTemplatesCompanion.insert(
-            name: trimmedNombre,
-            amountCents: amountCents,
-            transactionType: 'expense',
-            category: s.categoria!.name,
-            periodicity: s.periodicidad!.name,
-            startDate: today,
-            endDate: s.fechaFin!,
-          ),
-        );
+        if (s.periodicidad == Periodicity.mensual) {
+          // Compute startDate: if paymentDay already passed this month, the
+          // first eligible month is next month; otherwise it is this month.
+          // PeriodGenerator's date-level filter then decides whether to
+          // generate the entry immediately (paymentDay == today) or defer it.
+          final daysThisMonth =
+              DateTime(today.year, today.month + 1, 0).day;
+          final clampedDay = paymentDay.clamp(1, daysThisMonth);
+          final DateTime startDate;
+          if (clampedDay < today.day) {
+            // Day already passed this month → first eligible month is next month
+            startDate = DateTime(today.year, today.month + 1, 1);
+          } else {
+            startDate = DateTime(today.year, today.month, 1);
+          }
 
-        final periodKey = s.periodicidad == Periodicity.mensual
-            ? '${today.year}-${today.month.toString().padLeft(2, '0')}'
-            : '${today.year}';
+          final templateId = await templateDao.insert(
+            RecurringTemplatesCompanion.insert(
+              name: trimmedNombre,
+              amountCents: amountCents,
+              transactionType: 'expense',
+              category: s.categoria!.name,
+              periodicity: s.periodicidad!.name,
+              startDate: startDate,
+              endDate: s.fechaFin!,
+              paymentDay: Value(paymentDay),
+            ),
+          );
 
-        await dao.insert(
-          TransactionsCompanion.insert(
-            name: trimmedNombre,
-            amountCents: amountCents,
-            transactionType: 'expense',
-            category: s.categoria!.name,
-            date: today,
-            templateId: Value(templateId),
-          ),
-        );
+          // Fetch the saved template row and delegate entry generation.
+          // generateForTemplate() will produce an entry only if paymentDay
+          // has arrived (≤ today); otherwise it does nothing and the entry
+          // will be created on the next app launch when the date arrives.
+          final template = await (db.select(db.recurringTemplates)
+                ..where((t) => t.id.equals(templateId)))
+              .getSingle();
+          await RecurringGenerationService.generateForTemplate(
+            db,
+            template,
+            today: today,
+          );
+        } else {
+          // Annual — keep existing behavior: generate first entry for today
+          // (annual out of scope for this feature).
+          final firstDate = today;
+          final periodKey = '${today.year}';
+          final startDate = DateTime(firstDate.year, firstDate.month, 1);
 
-        await templateDao.updateLastGeneratedPeriod(templateId, periodKey);
+          final templateId = await templateDao.insert(
+            RecurringTemplatesCompanion.insert(
+              name: trimmedNombre,
+              amountCents: amountCents,
+              transactionType: 'expense',
+              category: s.categoria!.name,
+              periodicity: s.periodicidad!.name,
+              startDate: startDate,
+              endDate: s.fechaFin!,
+              paymentDay: Value(paymentDay),
+            ),
+          );
+
+          await dao.insert(
+            TransactionsCompanion.insert(
+              name: trimmedNombre,
+              amountCents: amountCents,
+              transactionType: 'expense',
+              category: s.categoria!.name,
+              date: firstDate,
+              templateId: Value(templateId),
+            ),
+          );
+
+          await templateDao.updateLastGeneratedPeriod(templateId, periodKey);
+        }
       } else {
         // One-off expense
         final today = DateTime.now();
-        final wasEmpty = !(ref.read(kpiProvider).value?.hasTransactions ?? false);
 
         await dao.insert(
           TransactionsCompanion.insert(
@@ -167,8 +239,6 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
                 : s.descripcion.trim()),
           ),
         );
-
-        if (wasEmpty) await capitalDao.deactivate();
       }
 
       // Reset form
@@ -201,6 +271,7 @@ class IncomeFormState {
     this.numeroPagas,
     this.primeraPagaExtra,
     this.segundaPagaExtra,
+    this.paymentDay,
     this.isSubmitting = false,
     this.errorMessage,
   });
@@ -212,6 +283,10 @@ class IncomeFormState {
   final PayFrequency? numeroPagas;
   final int? primeraPagaExtra;
   final int? segundaPagaExtra;
+
+  /// Day of month (1–31) for salary deposit. Null until set.
+  final int? paymentDay;
+
   final bool isSubmitting;
   final String? errorMessage;
 
@@ -226,6 +301,7 @@ class IncomeFormState {
     Object? numeroPagas = _sentinel,
     Object? primeraPagaExtra = _sentinel,
     Object? segundaPagaExtra = _sentinel,
+    Object? paymentDay = _sentinel,
     bool? isSubmitting,
     Object? errorMessage = _sentinel,
   }) {
@@ -243,6 +319,8 @@ class IncomeFormState {
       segundaPagaExtra: segundaPagaExtra == _sentinel
           ? this.segundaPagaExtra
           : segundaPagaExtra as int?,
+      paymentDay:
+          paymentDay == _sentinel ? this.paymentDay : paymentDay as int?,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: errorMessage == _sentinel
           ? this.errorMessage
@@ -265,6 +343,7 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
       numeroPagas: null,
       primeraPagaExtra: null,
       segundaPagaExtra: null,
+      paymentDay: null,
     );
   }
 
@@ -273,8 +352,11 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
       numeroPagas: v,
       primeraPagaExtra: null,
       segundaPagaExtra: null,
+      paymentDay: null,
     );
   }
+
+  void setPaymentDay(int? v) => state = state.copyWith(paymentDay: v);
 
   void setPrimeraPagaExtra(int? v) =>
       state = state.copyWith(primeraPagaExtra: v);
@@ -306,25 +388,36 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
           return 'Los meses de paga extra deben ser distintos';
         }
       }
+      if (s.paymentDay == null) {
+        return 'Selecciona el día de cobro del salario';
+      }
     }
 
     state = state.copyWith(isSubmitting: true, errorMessage: null);
 
     try {
       final dao = ref.read(transactionDaoProvider);
-      final capitalDao = ref.read(initialCapitalDaoProvider);
       final today = DateTime.now();
-      final wasEmpty =
-          !(ref.read(kpiProvider).value?.hasTransactions ?? false);
 
       if (s.isSalario) {
+        // Salario is always monthly — compute startDate using skip logic, then
+        // delegate first-entry generation to RecurringGenerationService.
         final templateDao = ref.read(templateDaoProvider);
+        final db = ref.read(databaseProvider);
+        final paymentDay = s.paymentDay!;
+
+        // Determine the first eligible month (same skip logic as expense).
+        final daysThisMonth = DateTime(today.year, today.month + 1, 0).day;
+        final clampedDay = paymentDay.clamp(1, daysThisMonth);
+        final DateTime startDate;
+        if (clampedDay < today.day) {
+          startDate = DateTime(today.year, today.month + 1, 1);
+        } else {
+          startDate = DateTime(today.year, today.month, 1);
+        }
 
         // End date = far future for open-ended salary
         final farFuture = DateTime(today.year + 50, 12, 31);
-        final extraMonths = s.isCatorcepagas
-            ? [s.primeraPagaExtra!, s.segundaPagaExtra!]
-            : <int>[];
 
         final templateId = await templateDao.insert(
           RecurringTemplatesCompanion.insert(
@@ -333,50 +426,27 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
             transactionType: 'income',
             category: IncomeCategory.salario.name,
             periodicity: Periodicity.mensual.name,
-            startDate: today,
+            startDate: startDate,
             endDate: farFuture,
             payFrequency: Value(s.numeroPagas!.name),
             extraPayMonth1: Value(
                 s.isCatorcepagas ? s.primeraPagaExtra : null),
             extraPayMonth2: Value(
                 s.isCatorcepagas ? s.segundaPagaExtra : null),
+            paymentDay: Value(paymentDay),
           ),
         );
 
-        final periodKey =
-            '${today.year}-${today.month.toString().padLeft(2, '0')}';
-
-        await dao.insert(
-          TransactionsCompanion.insert(
-            name: trimmedNombre,
-            amountCents: amountCents,
-            transactionType: 'income',
-            category: IncomeCategory.salario.name,
-            date: today,
-            templateId: Value(templateId),
-            description: Value(s.descripcion.trim().isEmpty
-                ? null
-                : s.descripcion.trim()),
-          ),
+        // Fetch saved template and delegate entry generation. The service
+        // handles both regular and 14-paga extra entries via PeriodGenerator.
+        final template = await (db.select(db.recurringTemplates)
+              ..where((t) => t.id.equals(templateId)))
+            .getSingle();
+        await RecurringGenerationService.generateForTemplate(
+          db,
+          template,
+          today: today,
         );
-
-        // Also generate extra entry if today is a bonus month
-        if (extraMonths.contains(today.month)) {
-          await dao.insert(
-            TransactionsCompanion.insert(
-              name: trimmedNombre,
-              amountCents: amountCents,
-              transactionType: 'income',
-              category: IncomeCategory.salario.name,
-              date: today,
-              templateId: Value(templateId),
-            ),
-          );
-          await templateDao.updateLastGeneratedPeriod(
-              templateId, '$periodKey-extra');
-        } else {
-          await templateDao.updateLastGeneratedPeriod(templateId, periodKey);
-        }
       } else {
         // One-off income
         await dao.insert(
@@ -392,8 +462,6 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
           ),
         );
       }
-
-      if (wasEmpty) await capitalDao.deactivate();
 
       state = const IncomeFormState();
       return null;

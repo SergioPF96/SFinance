@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_services/shared_services.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'dao_providers.dart';
 
 /// Display model for a recurring template row in the Recurrentes tab.

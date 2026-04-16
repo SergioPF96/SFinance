@@ -23,10 +23,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/entradas',
-          builder: (context, state) {
-            final tab = state.uri.queryParameters['tab'] ?? 'transacciones';
-            return EntradasView(initialTab: tab);
-          },
+          builder: (context, state) => const EntradasView(),
         ),
       ],
     ),
