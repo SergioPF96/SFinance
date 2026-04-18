@@ -70,3 +70,45 @@
 **Decision**: No Drift migration or schema changes required.
 
 **Rationale**: `paymentDay` already exists in the `recurring_templates` table (added in feature 005). `lastGeneratedPeriod` already supports null values (indicates no entries generated yet). The change is purely in the logic layer.
+
+---
+
+## Addendum — 2026-04-18 clarification deltas
+
+The three `/speckit.clarify` sessions logged in `spec.md` added three requirements (FR-005 extension + FR-006 new + extra-paga affirmation). These address gaps not covered by R1–R7 above.
+
+### R8: Where does FR-006 (save-time validation) hook in?
+
+**Decision**: A new pure helper `PeriodGenerator.firstOccurrenceDate({required DateTime today, required int paymentDay}) → DateTime` is added alongside `dateForKey` / `computeDueKeys`. Form providers call it before `templateDao.insert`, compare the result against `state.fechaFin`, and short-circuit with an `errorMessage` if the first occurrence falls after `endDate`.
+
+**Rationale**: The rule that R3 pushed into `computeDueKeys` as a *filter* is now also needed at *save time* as a *validator*. Extracting it once as a named helper keeps both call sites aligned and unit-testable in isolation. Placing the validator in the form provider — not the DAO — keeps error reporting on the same `errorMessage` channel already used for all other form validation (per Principle III and the existing save-path pattern established in 001).
+
+**Alternatives considered**:
+- DB CHECK constraint: SQLite can't express "clamped paymentDay vs derived next-month length"; would also surface as opaque exception.
+- Dedicated validator class: one extra layer for a two-line check — violates Principle VII.
+
+### R9: Behaviour for open-ended Suscripción (`endDate = null`)
+
+**Decision**: Feature 006 guarantees *behavioural* compatibility only — the FR-001 deferral rule applies unchanged to open-ended subs. The *storage/schema* work (nullable `endDate` column, UI toggle) is explicitly owned by spec 001's open-ended-subscription amendment and is **out of scope for this feature**. Feature 006's pure helpers must simply not crash when later asked to calculate with a null `endDate`: `firstOccurrenceDate` does not take `endDate`, and `computeDueKeys` continues to require non-null for now. Callers using open-ended templates will pass a sentinel far-future date once spec 001's DB change lands.
+
+**Rationale**: Cleanly separates the two features' releases. Coupling a Drift v3 migration into feature 006 would expand scope unnecessarily.
+
+**Alternatives considered**:
+- Add nullable `endDate` to `computeDueKeys` signature now. Rejected: would still require the schema migration somewhere, and ripples through every call site for no immediate benefit since no template today stores null.
+
+### R10: Extra-paga paymentDay — already correct
+
+**Decision**: No production code change. `PeriodGenerator.dateForKey` (period_generator.dart:72–78) already resolves `YYYY-MM-extra` keys using the supplied `paymentDay` with end-of-month clamp. Add regression tests only.
+
+**Rationale**: Reading confirms the implementation satisfies the clarification verbatim. Regression tests prevent silent drift in future refactors.
+
+**Alternatives considered**: None — behaviour matches the spec.
+
+### R11: Error message — no i18n framework yet
+
+**Decision**: Inline Spanish const string `"El día de pago ya pasó este mes y la fecha de fin no alcanza al mes siguiente"` in the form provider. Defer i18n to whenever the app-wide localization effort lands.
+
+**Rationale**: App is currently Spanish-only (CLAUDE.md, user profile). Introducing an i18n framework for one error string violates Principle VII. When the project does localize, this string moves alongside every other hard-coded user-facing label.
+
+**Alternatives considered**:
+- Minimal `Intl.message` wrapper. Rejected: premature abstraction.

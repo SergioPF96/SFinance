@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_services/shared_services.dart';
@@ -30,7 +31,7 @@ void main() {
               category: 'salario',
               periodicity: 'mensual',
               startDate: DateTime(2026, 1, 1),
-              endDate: DateTime(2076, 12, 31),
+              endDate: Value(DateTime(2076, 12, 31)),
             ),
           );
 
@@ -58,7 +59,7 @@ void main() {
               category: 'suscripcion',
               periodicity: 'mensual',
               startDate: DateTime(2026, 1, 1),
-              endDate: DateTime(2027, 1, 31),
+              endDate: Value(DateTime(2027, 1, 31)),
             ),
           );
 

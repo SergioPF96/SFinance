@@ -19,6 +19,7 @@ class ExpenseFormState {
     this.periodicidad,
     this.fechaFin,
     this.paymentDay,
+    this.openEnded = false,
     this.isSubmitting = false,
     this.errorMessage,
   });
@@ -32,6 +33,10 @@ class ExpenseFormState {
 
   /// Day of month (1–31) selected for recurring expenses. Null until set.
   final int? paymentDay;
+
+  /// Whether this Suscripción has no end date ("Sin fecha de fin").
+  /// When true, fechaFin is null and no end date is required or stored.
+  final bool openEnded;
 
   final bool isSubmitting;
   final String? errorMessage;
@@ -48,6 +53,7 @@ class ExpenseFormState {
     Object? periodicidad = _sentinel,
     Object? fechaFin = _sentinel,
     Object? paymentDay = _sentinel,
+    bool? openEnded,
     bool? isSubmitting,
     Object? errorMessage = _sentinel,
   }) {
@@ -62,6 +68,7 @@ class ExpenseFormState {
       fechaFin: fechaFin == _sentinel ? this.fechaFin : fechaFin as DateTime?,
       paymentDay:
           paymentDay == _sentinel ? this.paymentDay : paymentDay as int?,
+      openEnded: openEnded ?? this.openEnded,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: errorMessage == _sentinel
           ? this.errorMessage
@@ -82,17 +89,18 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
   void setDescripcion(String v) => state = state.copyWith(descripcion: v);
 
   void setCategoria(ExpenseCategory? v) {
-    // Clear recurring fields when switching away from recurring categories.
+    // Clear all recurring fields (including openEnded) when switching category.
     state = state.copyWith(
       categoria: v,
       periodicidad: null,
       fechaFin: null,
       paymentDay: null,
+      openEnded: false,
     );
   }
 
-  void setPeriodicidad(Periodicity? v) =>
-      state = state.copyWith(periodicidad: v, fechaFin: null, paymentDay: null);
+  void setPeriodicidad(Periodicity? v) => state = state.copyWith(
+      periodicidad: v, fechaFin: null, paymentDay: null, openEnded: false);
 
   void setFechaFin(DateTime? v) {
     if (v != null && state.periodicidad == Periodicity.anual) {
@@ -106,6 +114,11 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
   }
 
   void setPaymentDay(int? v) => state = state.copyWith(paymentDay: v);
+
+  /// Toggles "Sin fecha de fin" mode. When [v] is true, clears fechaFin.
+  /// When [v] is false, fechaFin remains null (user must select a date again).
+  void setOpenEnded(bool v) =>
+      state = state.copyWith(openEnded: v, fechaFin: null);
 
   /// Validates and submits the form.
   /// Returns null on success, error message string on failure.
@@ -125,13 +138,29 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
 
     if (s.isRecurring) {
       if (s.periodicidad == null) return 'Selecciona la periodicidad';
-      if (s.fechaFin == null) return 'Selecciona la fecha de fin';
+      // fechaFin only required when not open-ended.
+      if (!s.openEnded && s.fechaFin == null) {
+        return 'Selecciona la fecha de fin';
+      }
       final today = DateTime.now();
-      if (s.fechaFin!.isBefore(DateTime(today.year, today.month, today.day))) {
+      if (!s.openEnded &&
+          s.fechaFin!.isBefore(DateTime(today.year, today.month, today.day))) {
         return 'La fecha de fin debe ser hoy o posterior';
       }
       if (s.paymentDay == null) {
         return 'Selecciona el día de cobro/pago';
+      }
+      // FR-006: for monthly templates, reject if the calculated first occurrence
+      // falls after fechaFin. Skipped for open-ended (no fechaFin), for annual
+      // (paymentDay irrelevant there).
+      if (!s.openEnded && s.periodicidad == Periodicity.mensual) {
+        final firstOccurrence = PeriodGenerator.firstOccurrenceDate(
+          today: today,
+          paymentDay: s.paymentDay!,
+        );
+        if (firstOccurrence.isAfter(s.fechaFin!)) {
+          return 'El día de pago ya pasó este mes y la fecha de fin no alcanza al mes siguiente';
+        }
       }
     }
 
@@ -173,7 +202,7 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
               category: s.categoria!.name,
               periodicity: s.periodicidad!.name,
               startDate: startDate,
-              endDate: s.fechaFin!,
+              endDate: Value(s.openEnded ? null : s.fechaFin),
               paymentDay: Value(paymentDay),
             ),
           );
@@ -205,7 +234,7 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
               category: s.categoria!.name,
               periodicity: s.periodicidad!.name,
               startDate: startDate,
-              endDate: s.fechaFin!,
+              endDate: Value(s.fechaFin),
               paymentDay: Value(paymentDay),
             ),
           );
@@ -427,7 +456,7 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
             category: IncomeCategory.salario.name,
             periodicity: Periodicity.mensual.name,
             startDate: startDate,
-            endDate: farFuture,
+            endDate: Value(farFuture),
             payFrequency: Value(s.numeroPagas!.name),
             extraPayMonth1: Value(
                 s.isCatorcepagas ? s.primeraPagaExtra : null),

@@ -71,15 +71,20 @@ Extracts the per-template generation loop from `run()`. Called by form providers
 ## State Transitions
 
 ```
-Template saved (lastGeneratedPeriod = null)
-  → generateForTemplate() called
-    → PeriodGenerator.computeDueKeys(paymentDay: X)
-      → If paymentDay <= today.day AND month is current:
-          → Generate entry, set lastGeneratedPeriod = current period key
-      → If paymentDay > today.day:
-          → No entry generated, lastGeneratedPeriod stays null
-      → If startDate is next month (paymentDay < today.day):
-          → No keys due, lastGeneratedPeriod stays null
+Template save attempt
+  → Form provider computes firstOccurrenceDate(today, paymentDay)
+  → If endDate != null AND firstOccurrenceDate > endDate:
+      → Reject save, set errorMessage, do NOT insert template (FR-006)
+  → Else:
+      → Insert template (lastGeneratedPeriod = null)
+      → generateForTemplate() called
+        → PeriodGenerator.computeDueKeys(paymentDay: X)
+          → If paymentDay <= today.day AND month is current:
+              → Generate entry, set lastGeneratedPeriod = current period key
+          → If paymentDay > today.day:
+              → No entry generated, lastGeneratedPeriod stays null
+          → If startDate is next month (paymentDay < today.day):
+              → No keys due, lastGeneratedPeriod stays null
 
 App launch (RecurringGenerationService.run())
   → For each template with lastGeneratedPeriod = null or behind:
@@ -87,3 +92,33 @@ App launch (RecurringGenerationService.run())
     → Generate entries for all due keys
     → Update lastGeneratedPeriod
 ```
+
+---
+
+## Addendum — 2026-04-18 clarification deltas
+
+### New pure helper: `PeriodGenerator.firstOccurrenceDate`
+
+**Signature**: `static DateTime firstOccurrenceDate({required DateTime today, required int paymentDay})`
+
+**Contract**:
+- If `paymentDay >= today.day` → returns `DateTime(today.year, today.month, clamp(paymentDay, 1, daysInMonth(today.year, today.month)))`.
+- If `paymentDay < today.day` → returns `DateTime(today.year, today.month + 1, clamp(paymentDay, 1, daysInMonth(nextMonth)))`, handling December wraparound normally via `DateTime` constructor.
+
+**Used by**: form providers (FR-006 validation); also re-exported for tests.
+
+### FR-006 save-time validation (form provider)
+
+**Applies to**: Monthly recurring templates where `endDate != null`. Skipped for open-ended subscriptions (`endDate == null`) and for annual templates.
+
+**Check**: `firstOccurrenceDate(today, paymentDay).isAfter(endDate)` → reject with `errorMessage = "El día de pago ya pasó este mes y la fecha de fin no alcanza al mes siguiente"`.
+
+**Ordering**: Runs after existing paymentDay-required check and endDate-in-future check; runs before `templateDao.insert`.
+
+### Extra-paga clarification (no data-model change)
+
+The existing `dateForKey` resolution of `YYYY-MM-extra` keys — using `paymentDay` clamped to the extra month's length — is the documented contract. No field additions, no behaviour change; regression tests added to lock it in.
+
+### Open-ended Suscripción tolerance (forward compatibility)
+
+`firstOccurrenceDate` does not reference `endDate` → inherently null-tolerant. FR-006 validation explicitly short-circuits on null. `computeDueKeys` keeps its current non-null `endDate` signature; feature 001's open-ended work will decide whether to relax the signature or pass a sentinel far-future date.

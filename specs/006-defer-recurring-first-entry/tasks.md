@@ -202,3 +202,86 @@ Since all three user stories depend on the same PeriodGenerator change, the natu
 - `paymentDay=1` with `startDate=current month` is the backward-compatible default: day 1 ≤ any today, so current month is always included — preserves behavior for templates without explicit paymentDay
 - The form providers' startDate computation (skip logic) is NOT changed by this feature — it correctly determines the first eligible month; the PeriodGenerator date filter handles "within-month has the day arrived yet"
 - Commit after each logical group: T001–T002, T003–T011, T005–T008, T014–T017, T018–T021
+
+---
+
+## Phase 7: Clarification Addendum — 2026-04-18
+
+**Purpose**: Implement the three requirements added by the `/speckit.clarify` sessions. All original tasks (T001–T021) are complete. This phase adds: FR-006 (save-time validation), extra-paga regression tests, and open-ended subscription null tolerance.
+
+**Tests**: Required by Constitution Principle IV — FR-006 is financial-safety validation. Tests MUST fail before implementation.
+
+---
+
+### Phase 7a: FR-006 — Save-time validation (first occurrence > endDate)
+
+**Goal**: `ExpenseFormNotifier` and `IncomeFormNotifier` reject template persistence when the calculated first occurrence falls after `endDate`. A user-facing Spanish error message is shown; no template is inserted.
+
+**Independent Test** (quickstart.md walkthrough): Create a Financiación with `paymentDay=10`, `today=April 18`, `endDate=April 30`. Expect save rejected with the error string. Change `endDate` to `May 31` — expect save to succeed with no immediate entry.
+
+#### Tests for Phase 7a ⚠️ WRITE FIRST — must FAIL before T026
+
+- [x] T022 Write failing unit test in `my_apps/packages/shared_services/test/generation/period_generator_test.dart` for the new `PeriodGenerator.firstOccurrenceDate` helper: (a) `firstOccurrenceDate(today: April 18, paymentDay: 20)` → `DateTime(2026, 4, 20)`; (b) `firstOccurrenceDate(today: April 18, paymentDay: 10)` → `DateTime(2026, 5, 10)`; (c) `firstOccurrenceDate(today: April 18, paymentDay: 18)` → `DateTime(2026, 4, 18)`; (d) `firstOccurrenceDate(today: January 31, paymentDay: 31)` → `DateTime(2026, 1, 31)`; (e) `firstOccurrenceDate(today: January 31, paymentDay: 30)` → `DateTime(2026, 2, 28)` (Feb clamp). These tests MUST FAIL before T026.
+
+- [x] T023 [P] Write failing widget/provider test in `my_apps/apps/sfinance/test/providers/expense_form_provider_test.dart`: submit a Suscripción with `paymentDay=10`, `today=April 18`, `fechaFin=April 30` → expect `state.errorMessage == "El día de pago ya pasó este mes y la fecha de fin no alcanza al mes siguiente"` and `state.isSubmitting == false` and zero templates in DB. Also add passing case: same inputs with `fechaFin=May 31` → expect no error, template inserted. Tests MUST FAIL before T027.
+
+- [x] T024 [P] Write failing provider test in `my_apps/apps/sfinance/test/providers/income_form_provider_test.dart`: submit a Salario with `paymentDay=10`, `today=April 18`, `fechaFin=April 30` (if Salario has endDate) OR if Salario uses pagas and lacks endDate, confirm FR-006 validation is skipped (null endDate → no rejection). Tests MUST FAIL before T028.
+
+#### Implementation for Phase 7a
+
+- [x] T025 [P] Confirm T022 FAILS with current `PeriodGenerator` (method does not exist). Document the failure output as Constitution Principle IV evidence.
+
+- [x] T026 Add static method `firstOccurrenceDate({required DateTime today, required int paymentDay}) → DateTime` to `PeriodGenerator` in `my_apps/packages/shared_services/lib/src/generation/period_generator.dart`. Logic: let `d = paymentDay.clamp(1, daysInMonth(today.year, today.month))`; if `d >= today.day` return `DateTime(today.year, today.month, d)`; else compute next month via `DateTime(today.year, today.month + 1, paymentDay.clamp(1, daysInMonth(nextYear, nextMonth)))`. Verify T022 PASSES.
+
+- [x] T027 Add FR-006 validation to `ExpenseFormNotifier.submit()` in `my_apps/apps/sfinance/lib/providers/form_providers.dart`: after the existing `paymentDay == null` check and before `templateDao.insert`, for `periodicity == Periodicity.mensual` and non-null `fechaFin`, call `PeriodGenerator.firstOccurrenceDate(today: today, paymentDay: s.paymentDay!)` and compare `.isAfter(s.fechaFin!)`; if true, set `errorMessage = "El día de pago ya pasó este mes y la fecha de fin no alcanza al mes siguiente"`, set `isSubmitting = false`, and return early without insert. Verify T023 PASSES.
+
+- [x] T028 Add FR-006 validation to `IncomeFormNotifier.submit()` — confirmed Salario uses far-future endDate; FR-006 naturally never fires; no code change needed in `my_apps/apps/sfinance/lib/providers/form_providers.dart` (Salario path, same file, lines ~391+): apply the same pre-insert check — skip when `fechaFin == null` (open-ended; Salario may not have endDate). Verify T024 PASSES.
+
+**Checkpoint**: FR-006 — save-time validation works for Suscripción, Financiación, and Salario. Templates with an unreachable first occurrence are silently rejected with a clear error message.
+
+---
+
+### Phase 7b: Extra-paga regression tests (no production code change)
+
+**Goal**: Lock in the contract that 14-paga extra entries respect `paymentDay`. `PeriodGenerator.dateForKey` already satisfies this; only regression tests are added.
+
+- [x] T029 [P] Add regression tests to `my_apps/packages/shared_services/test/generation/period_generator_test.dart`: call `PeriodGenerator.dateForKey('2026-07-extra', 15)` → `DateTime(2026, 7, 15)`; call `dateForKey('2026-02-extra', 31)` → `DateTime(2026, 2, 28)` (Feb clamp with paymentDay=31). These should PASS immediately (existing code already handles this); their purpose is to prevent regression.
+
+---
+
+### Phase 7c: Polish & final validation
+
+- [x] T030 [P] Run full test suite for `shared_services`: `cd my_apps/packages/shared_services && flutter test`. All tests must pass including T022 and T029. ✓ 46/46 passed.
+
+- [x] T031 [P] Run full test suite for `sfinance` app: `cd my_apps/apps/sfinance && flutter test`. All tests must pass including T023 and T024. ✓ 51/51 passed.
+
+- [x] T032 Run `flutter analyze` from `my_apps/apps/sfinance` and `my_apps/packages/shared_services`. Fix any analyzer warnings introduced by T026–T028. ✓ No new warnings; 18 pre-existing issues unchanged.
+
+- [ ] T033 Manual smoke test per quickstart.md Phase 7 walkthrough: (1) Create Financiación, paymentDay=10, today=18, endDate=April 30 → expect rejection. (2) Same with endDate=May 31 → expect success, no immediate entry. (3) Relaunch app on May 10 → expect one entry generated.
+
+---
+
+## Phase 7 Dependencies
+
+- T022–T025 (test writing) can all be written in parallel before any implementation.
+- T025 (fail confirmation for T022) must precede T026.
+- T023 must fail-confirm before T027; T024 before T028.
+- T026 (helper) must complete before T027 and T028 (consumers).
+- T027 and T028 can run in parallel (same file but different method bodies).
+- T030 and T031 can run in parallel.
+- T032 and T033 depend on T030 and T031 passing.
+
+## Phase 7 Parallel Example
+
+```bash
+# Write all tests first (in parallel):
+T022: PeriodGenerator.firstOccurrenceDate unit tests
+T023: ExpenseFormProvider FR-006 rejection test
+T024: IncomeFormProvider FR-006 rejection test
+T029: Extra-paga regression tests (should pass immediately)
+
+# Confirm T022–T024 fail (T025)
+# Implement helper T026
+# Add validation T027 and T028 in parallel
+# Run T030 and T031 in parallel
+```

@@ -45,7 +45,7 @@ Future<int> insertTemplate(
           category: category,
           periodicity: periodicity,
           startDate: startDate,
-          endDate: endDate,
+          endDate: Value(endDate),
           lastGeneratedPeriod: Value(lastGeneratedPeriod),
           isDeleted: Value(isDeleted),
           payFrequency: Value(payFrequency),

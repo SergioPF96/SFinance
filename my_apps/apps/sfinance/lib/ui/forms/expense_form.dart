@@ -99,8 +99,20 @@ class ExpenseForm extends ConsumerWidget {
                 ),
               ],
 
-              // Fecha de fin (only when periodicidad is set)
-              if (state.isRecurring && state.periodicidad != null) ...[
+              // "Sin fecha de fin" toggle — only for Suscripción with periodicidad set
+              if (state.categoria == ExpenseCategory.suscripcion &&
+                  state.periodicidad != null) ...[
+                const SizedBox(height: 12),
+                _OpenEndedToggle(
+                  value: state.openEnded,
+                  onChanged: notifier.setOpenEnded,
+                ),
+              ],
+
+              // Fecha de fin (only when periodicidad is set and not open-ended)
+              if (state.isRecurring &&
+                  state.periodicidad != null &&
+                  !state.openEnded) ...[
                 const SizedBox(height: 12),
                 _FechaFinPicker(
                   periodicidad: state.periodicidad!,
@@ -273,6 +285,31 @@ class _DayDropdown extends StatelessWidget {
           .map((d) => DropdownMenuItem(value: d, child: Text('$d')))
           .toList(),
       onChanged: onChanged,
+    );
+  }
+}
+
+class _OpenEndedToggle extends StatelessWidget {
+  const _OpenEndedToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Sin fecha de fin',
+          style: TextStyle(color: AppColors.onBackground, fontSize: 14),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: AppColors.expense,
+        ),
+      ],
     );
   }
 }

@@ -59,7 +59,9 @@ class RecurringGenerationService {
               date: PeriodGenerator.dateForKey(
                 periodKey,
                 template.paymentDay ?? 1,
-                annualMonth: template.endDate.month,
+                // annualMonth: endDate month (null-safe; annual templates always
+                // have an endDate — open-ended is only for Suscripción/mensual).
+                annualMonth: template.endDate?.month,
               ),
               templateId: Value(template.id),
             ),
