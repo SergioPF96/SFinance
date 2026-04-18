@@ -22,6 +22,12 @@ class TemplateDetailModal extends ConsumerWidget {
     final notifier = ref.read(templateDetailProvider.notifier);
     final dao = ref.read(templateDaoProvider);
 
+    // Always use the latest snapshot from the stream so the modal reflects
+    // DB changes (e.g. after editing the amount) without needing to reopen.
+    final liveTemplates = ref.watch(activeTemplatesProvider).valueOrNull;
+    final current = liveTemplates?.where((t) => t.id == template.id).firstOrNull
+        ?? template;
+
     return Dialog(
       backgroundColor: AppColors.surface,
       child: ConstrainedBox(
@@ -38,7 +44,7 @@ class TemplateDetailModal extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      template.name,
+                      current.name,
                       style: const TextStyle(
                         color: AppColors.onBackground,
                         fontSize: 20,
@@ -57,29 +63,23 @@ class TemplateDetailModal extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // ── Info fields ──────────────────────────────────────────────
-              _InfoRow(label: 'Tipo', value: template.categoryLabel),
-              _InfoRow(label: 'Periodicidad', value: template.periodicity),
+              _InfoRow(label: 'Tipo', value: current.categoryLabel),
+              _InfoRow(label: 'Periodicidad', value: current.periodicity),
               _InfoRow(
-                label: 'Fecha inicio',
-                // endDate is used here just for type illustration;
-                // startDate would need a separate field — approximated from
-                // the template row. We show it via the display model.
-                // Since TemplateDisplay doesn't carry startDate, we derive
-                // it from context. For now show a placeholder.
-                // TODO(009): expose startDate in TemplateDisplay if needed.
-                value: template.paymentDay != null
-                    ? 'Día ${template.paymentDay} de cada mes'
+                label: 'Día de pago',
+                value: current.paymentDay != null
+                    ? 'Día ${current.paymentDay} de cada mes'
                     : 'Día 1 de cada mes',
               ),
               _InfoRow(
                 label: 'Fecha fin',
-                value: template.endDate != null
-                    ? DateFormatter.format(template.endDate!)
+                value: current.endDate != null
+                    ? DateFormatter.format(current.endDate!)
                     : 'Sin fecha límite',
               ),
               _InfoRow(
                 label: 'Próximo pago',
-                value: DateFormatter.format(template.nextPaymentDate),
+                value: DateFormatter.format(current.nextPaymentDate),
               ),
               const SizedBox(height: 8),
 
@@ -102,8 +102,8 @@ class TemplateDetailModal extends ConsumerWidget {
                         ),
                         Text(
                           CurrencyFormatter.format(
-                            template.amountCents,
-                            isIncome: template.transactionType ==
+                            current.amountCents,
+                            isIncome: current.transactionType ==
                                 TransactionType.income,
                           ),
                           style: const TextStyle(
@@ -116,7 +116,7 @@ class TemplateDetailModal extends ConsumerWidget {
                     ),
                     TextButton(
                       onPressed: () =>
-                          notifier.startEditing(template.amountCents),
+                          notifier.startEditing(current.amountCents),
                       child: const Text('Editar monto'),
                     ),
                   ],
@@ -177,7 +177,7 @@ class TemplateDetailModal extends ConsumerWidget {
                     ElevatedButton(
                       onPressed: state.isSubmitting
                           ? null
-                          : () => notifier.confirmEdit(template.id, dao),
+                          : () => notifier.confirmEdit(current.id, dao),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.balance,
                         foregroundColor: Colors.white,
