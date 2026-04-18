@@ -12,10 +12,11 @@ class TemplateDao extends DatabaseAccessor<AppDatabase>
   Future<int> insert(RecurringTemplatesCompanion entry) =>
       into(recurringTemplates).insert(entry);
 
-  /// All non-deleted templates.
+  /// All non-deleted templates, ordered by creation date ascending.
   Stream<List<RecurringTemplateRow>> watchActive() {
     return (select(recurringTemplates)
-          ..where((t) => t.isDeleted.equals(false)))
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .watch();
   }
 
@@ -24,6 +25,14 @@ class TemplateDao extends DatabaseAccessor<AppDatabase>
   Future<void> softDelete(int id) async {
     await (update(recurringTemplates)..where((t) => t.id.equals(id))).write(
       const RecurringTemplatesCompanion(isDeleted: Value(true)),
+    );
+  }
+
+  /// Updates only the amount of a template. Past generated transactions are
+  /// unaffected — they retain the amount they had when generated.
+  Future<void> updateAmount(int id, int newAmountCents) async {
+    await (update(recurringTemplates)..where((t) => t.id.equals(id))).write(
+      RecurringTemplatesCompanion(amountCents: Value(newAmountCents)),
     );
   }
 

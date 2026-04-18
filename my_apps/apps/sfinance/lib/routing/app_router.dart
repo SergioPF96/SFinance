@@ -4,6 +4,7 @@ import '../ui/shell/app_shell.dart';
 import '../ui/resumen/resumen_view.dart';
 import '../ui/analisis/analisis_view.dart';
 import '../ui/entradas/entradas_view.dart';
+import '../ui/recurrentes/recurrentes_view.dart';
 import '../ui/forms/expense_form.dart';
 import '../ui/forms/income_form.dart';
 
@@ -24,6 +25,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/entradas',
           builder: (context, state) => const EntradasView(),
+        ),
+        GoRoute(
+          path: '/recurrentes',
+          builder: (context, state) => const RecurrentesView(),
         ),
       ],
     ),
