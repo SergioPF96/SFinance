@@ -1,4 +1,4 @@
-# SFinance Development Guidelines
+﻿# SFinance Development Guidelines
 
 ## Project
 
@@ -51,6 +51,8 @@ No desktop-only interaction patterns without a touch-compatible fallback.
 well-maintained over cutting-edge. No premature abstractions.
 
 ## Active Technologies
+- Dart 3.x — Flutter stable + flutter_riverpod, go_router, drift ^2.20.0, shared_ui, shared_models, shared_services (009-recurring-templates-view)
+- SQLite local vía Drift. Sin cambio de esquema (v3 se mantiene). (009-recurring-templates-view)
 
 - **Framework**: Flutter (stable channel)
 - **Language**: Dart
