@@ -51,6 +51,13 @@ No desktop-only interaction patterns without a touch-compatible fallback.
 well-maintained over cutting-edge. No premature abstractions.
 
 ## Active Technologies
+- Dart (Flutter stable channel) + flutter_riverpod, go_router, drift, fl_chart, intl (001-sfinance-core-app)
+- Drift (SQLite) — local on-device only (001-sfinance-core-app)
+- Dart (Flutter stable channel) + flutter_riverpod, go_router, drift, shared_ui, shared_models, shared_services (003-unify-entries-view)
+- Drift (SQLite), local on-device only (003-unify-entries-view)
+- Dart (Flutter stable channel) + flutter_riverpod, go_router, drift ^2.20.0, shared_ui, shared_models, shared_services (005-recurring-payment-day)
+- Dart (Flutter stable channel) + Riverpod, Drift, intl (all already in use) (006-defer-recurring-first-entry)
+- SQLite via Drift on-device (006-defer-recurring-first-entry)
 - Dart 3.x — Flutter stable + flutter_riverpod, go_router, drift ^2.20.0, shared_ui, shared_models, shared_services (009-recurring-templates-view)
 - SQLite local vía Drift. Sin cambio de esquema (v3 se mantiene). (009-recurring-templates-view)
 
