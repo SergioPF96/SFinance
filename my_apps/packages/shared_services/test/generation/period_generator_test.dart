@@ -381,6 +381,123 @@ void main() {
       });
     });
 
+    // -------------------------------------------------------------------------
+    // firstOccurrenceDate (feature 006 FR-006 / clarification)
+    // -------------------------------------------------------------------------
+
+    group('firstOccurrenceDate', () {
+      // T022 — these tests FAIL until firstOccurrenceDate is implemented (T026)
+
+      test('paymentDay > today → same month', () {
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 4, 18),
+            paymentDay: 20,
+          ),
+          DateTime(2026, 4, 20),
+        );
+      });
+
+      test('paymentDay == today → same month (today)', () {
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 4, 18),
+            paymentDay: 18,
+          ),
+          DateTime(2026, 4, 18),
+        );
+      });
+
+      test('paymentDay < today → next month', () {
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 4, 18),
+            paymentDay: 10,
+          ),
+          DateTime(2026, 5, 10),
+        );
+      });
+
+      test('paymentDay=31, today=January 31 → same month (Jan has 31 days)', () {
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 1, 31),
+            paymentDay: 31,
+          ),
+          DateTime(2026, 1, 31),
+        );
+      });
+
+      test('paymentDay=31, today=January 1 → Jan 31 (same month, not yet arrived)', () {
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 1, 1),
+            paymentDay: 31,
+          ),
+          DateTime(2026, 1, 31),
+        );
+      });
+
+      test('paymentDay=31, today=April 18 → May 31 (April has 30, April 30 < 18? No: 30 >= 18 → April 30)', () {
+        // paymentDay=31 clamped in April → 30; 30 >= 18 → same month, April 30
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 4, 18),
+            paymentDay: 31,
+          ),
+          DateTime(2026, 4, 30),
+        );
+      });
+
+      test('paymentDay=30, today=January 31 → February 28 (next month, Feb clamp)', () {
+        // 30 < 31 → next month; Feb 2026 has 28 days → clamp to 28
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 1, 31),
+            paymentDay: 30,
+          ),
+          DateTime(2026, 2, 28),
+        );
+      });
+
+      test('December rollover: paymentDay=10, today=December 25 → January 10 next year', () {
+        expect(
+          PeriodGenerator.firstOccurrenceDate(
+            today: DateTime(2026, 12, 25),
+            paymentDay: 10,
+          ),
+          DateTime(2027, 1, 10),
+        );
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // extra-paga paymentDay regression (feature 006 clarification T029)
+    // -------------------------------------------------------------------------
+
+    group('dateForKey extra-paga paymentDay regression', () {
+      test('YYYY-MM-extra respects paymentDay (July, paymentDay=15)', () {
+        expect(
+          PeriodGenerator.dateForKey('2026-07-extra', 15),
+          DateTime(2026, 7, 15),
+        );
+      });
+
+      test('YYYY-MM-extra clamps paymentDay=31 in February', () {
+        expect(
+          PeriodGenerator.dateForKey('2026-02-extra', 31),
+          DateTime(2026, 2, 28),
+        );
+      });
+
+      test('YYYY-MM-extra paymentDay=1', () {
+        expect(
+          PeriodGenerator.dateForKey('2026-12-extra', 1),
+          DateTime(2026, 12, 1),
+        );
+      });
+    });
+
     group('dateForKey', () {
       test('monthly key → paymentDay of that month', () {
         expect(
@@ -416,6 +533,64 @@ void main() {
           DateTime(2026, 2, 28),
         );
       });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // T004 — FR-007: computeDueKeys with endDate=null (open-ended subscriptions)
+  // These tests FAIL until T006 makes endDate nullable in PeriodGenerator.
+  // ---------------------------------------------------------------------------
+
+  group('PeriodGenerator.computeDueKeys — null endDate (open-ended)', () {
+    test('endDate=null → keys up to today, no end cap', () {
+      final today = DateTime(2026, 4, 18);
+      final keys = PeriodGenerator.computeDueKeys(
+        startDate: DateTime(2026, 2, 1),
+        endDate: null,
+        periodicity: 'mensual',
+        paymentDay: 5,
+        today: today,
+      );
+      // Feb, Mar, Apr all have paymentDay=5 <= today (Apr 18) → 3 keys
+      expect(keys, ['2026-02', '2026-03', '2026-04']);
+    });
+
+    test('endDate=null → does not cap at some future date', () {
+      final today = DateTime(2026, 6, 10);
+      final keys = PeriodGenerator.computeDueKeys(
+        startDate: DateTime(2026, 4, 1),
+        endDate: null,
+        periodicity: 'mensual',
+        paymentDay: 5,
+        today: today,
+      );
+      // Apr, May, Jun (payDay 5 <= 10) → 3 keys
+      expect(keys, ['2026-04', '2026-05', '2026-06']);
+    });
+
+    test('endDate=null with lastGeneratedPeriod → skips already-generated keys', () {
+      final today = DateTime(2026, 4, 18);
+      final keys = PeriodGenerator.computeDueKeys(
+        startDate: DateTime(2026, 2, 1),
+        endDate: null,
+        periodicity: 'mensual',
+        lastGeneratedPeriod: '2026-03',
+        paymentDay: 5,
+        today: today,
+      );
+      expect(keys, ['2026-04']);
+    });
+
+    test('endDate=null but paymentDay not yet arrived this month → excludes current month', () {
+      final today = DateTime(2026, 4, 3);
+      final keys = PeriodGenerator.computeDueKeys(
+        startDate: DateTime(2026, 4, 1),
+        endDate: null,
+        periodicity: 'mensual',
+        paymentDay: 15, // hasn't arrived yet
+        today: today,
+      );
+      expect(keys, isEmpty);
     });
   });
 }

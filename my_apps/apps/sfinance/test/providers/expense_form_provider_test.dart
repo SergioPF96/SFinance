@@ -121,4 +121,179 @@ void main() {
           reason: 'Error message should mention day selection');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // FR-006 — save-time validation: first occurrence > endDate (T023)
+  // T023 tests FAIL until FR-006 is implemented in ExpenseFormNotifier (T027)
+  // ---------------------------------------------------------------------------
+
+  group('ExpenseFormNotifier — FR-006 first-occurrence > endDate validation',
+      () {
+    /// Submits a Suscripción with the given paymentDay, fechaFin, and
+    /// an injected [today] by temporarily overriding DateTime.now.
+    ///
+    /// Returns the error string from submit(), or null on success.
+    Future<String?> submitSuscripcion(
+      ProviderContainer container, {
+      required int paymentDay,
+      required DateTime fechaFin,
+    }) async {
+      final notifier = container.read(expenseFormProvider.notifier);
+      notifier.setNombre('Servicio test');
+      notifier.setMonto('9.99');
+      notifier.setCategoria(ExpenseCategory.suscripcion);
+      notifier.setPeriodicidad(Periodicity.mensual);
+      notifier.setFechaFin(fechaFin);
+      notifier.setPaymentDay(paymentDay);
+      return notifier.submit();
+    }
+
+    test(
+        'paymentDay already past, fechaFin=today → reject with FR-006 error',
+        () async {
+      // paymentDay is set to a day that has already passed (today - 1, or 28
+      // on the 1st to avoid being today). fechaFin = today, so the deferred
+      // first occurrence (next month) is strictly after fechaFin.
+      final container = makeContainer();
+      final today = DateTime.now();
+      final safePastDay = today.day > 1 ? today.day - 1 : 28;
+      final fechaFin = DateTime(today.year, today.month, today.day);
+
+      final error = await submitSuscripcion(
+        container,
+        paymentDay: safePastDay,
+        fechaFin: fechaFin,
+      );
+
+      expect(error, isNotNull,
+          reason: 'FR-006: should reject when first occurrence > fechaFin');
+      expect(
+        error,
+        contains('fecha de fin'),
+        reason: 'Error must mention fecha de fin',
+      );
+
+      // Verify no template was inserted
+      final db = container.read(databaseProvider);
+      final templates = await db.select(db.recurringTemplates).get();
+      expect(templates, isEmpty,
+          reason: 'FR-006: template must NOT be persisted on rejection');
+    });
+
+    test(
+        'paymentDay already past, fechaFin far in future → save succeeds (no FR-006 rejection)',
+        () async {
+      final container = makeContainer();
+      final today = DateTime.now();
+      final safePastDay = today.day > 1 ? today.day - 1 : 28;
+      // fechaFin two months from now → first occurrence (next month) < fechaFin
+      final fechaFin = DateTime(today.year, today.month + 2, 28);
+
+      final error = await submitSuscripcion(
+        container,
+        paymentDay: safePastDay,
+        fechaFin: fechaFin,
+      );
+
+      expect(error, isNull,
+          reason: 'FR-006 should not reject when first occurrence <= fechaFin');
+    });
+
+    test('paymentDay has NOT passed yet, fechaFin = same month end → succeeds',
+        () async {
+      final container = makeContainer();
+      final today = DateTime.now();
+      // paymentDay = tomorrow (not yet passed)
+      final futureDay = today.day + 1;
+      if (futureDay > 28) {
+        // Skip on last days of month where futureDay might exceed end of month
+        return;
+      }
+      // fechaFin = end of current month
+      final endOfMonth = DateTime(today.year, today.month + 1, 0);
+
+      final error = await submitSuscripcion(
+        container,
+        paymentDay: futureDay,
+        fechaFin: endOfMonth,
+      );
+
+      expect(error, isNull,
+          reason:
+              'paymentDay not yet passed → first occurrence is this month → should not reject');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // T005 — FR-005 / FR-009: open-ended subscription submit (spec 007)
+  // These tests FAIL until T008–T010 add openEnded support to ExpenseFormNotifier.
+  // ---------------------------------------------------------------------------
+
+  group('ExpenseFormNotifier — open-ended subscription (spec 007)', () {
+    Future<String?> submitOpenEnded(
+      ProviderContainer container, {
+      int paymentDay = 10,
+    }) async {
+      final notifier = container.read(expenseFormProvider.notifier);
+      notifier.setNombre('Netflix');
+      notifier.setMonto('15.99');
+      notifier.setCategoria(ExpenseCategory.suscripcion);
+      notifier.setPeriodicidad(Periodicity.mensual);
+      notifier.setOpenEnded(true); // no fechaFin
+      notifier.setPaymentDay(paymentDay);
+      return notifier.submit();
+    }
+
+    test('open-ended submit succeeds and persists template with endDate=null',
+        () async {
+      final container = makeContainer();
+      final error = await submitOpenEnded(container);
+
+      expect(error, isNull,
+          reason: 'open-ended subscription must save without error');
+
+      final db = container.read(databaseProvider);
+      final templates = await db.select(db.recurringTemplates).get();
+      expect(templates, hasLength(1));
+      expect(templates.first.endDate, isNull,
+          reason: 'endDate must be null for open-ended template');
+    });
+
+    test('FR-006 validation is skipped for open-ended (paymentDay past, no endDate)',
+        () async {
+      final container = makeContainer();
+      final today = DateTime.now();
+      // Use a paymentDay that has already passed — would normally trigger FR-006
+      // if there were an endDate set to today.
+      final pastDay = today.day > 1 ? today.day - 1 : 28;
+      final error = await submitOpenEnded(container, paymentDay: pastDay);
+
+      expect(error, isNull,
+          reason:
+              'FR-006 must not fire for open-ended subscriptions (no endDate)');
+    });
+
+    test('setOpenEnded(true) clears fechaFin', () {
+      final container = makeContainer();
+      final notifier = container.read(expenseFormProvider.notifier);
+      notifier.setCategoria(ExpenseCategory.suscripcion);
+      notifier.setPeriodicidad(Periodicity.mensual);
+      notifier.setFechaFin(DateTime(2027, 12, 31));
+      notifier.setOpenEnded(true);
+      expect(container.read(expenseFormProvider).fechaFin, isNull);
+    });
+
+    test('setOpenEnded(true) then setOpenEnded(false) → fechaFin still null',
+        () {
+      final container = makeContainer();
+      final notifier = container.read(expenseFormProvider.notifier);
+      notifier.setCategoria(ExpenseCategory.suscripcion);
+      notifier.setPeriodicidad(Periodicity.mensual);
+      notifier.setFechaFin(DateTime(2027, 12, 31));
+      notifier.setOpenEnded(true);
+      notifier.setOpenEnded(false);
+      expect(container.read(expenseFormProvider).fechaFin, isNull,
+          reason: 'previously selected fechaFin must NOT be restored');
+    });
+  });
 }

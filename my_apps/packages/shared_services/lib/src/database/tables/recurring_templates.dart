@@ -16,7 +16,8 @@ class RecurringTemplates extends Table {
   TextColumn get periodicity => text()();
 
   DateTimeColumn get startDate => dateTime()();
-  DateTimeColumn get endDate => dateTime()();
+  /// Null for open-ended subscriptions (sin fecha de fin).
+  DateTimeColumn get endDate => dateTime().nullable()();
 
   /// "docepagas" or "catorcepagas". Null for non-salary templates.
   TextColumn get payFrequency => text().nullable()();

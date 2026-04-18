@@ -14,6 +14,14 @@ Esta especificación reemplaza parcialmente la spec 001 (`specs/001-sfinance-cor
 
 También complementa la spec 005 (`specs/005-recurring-payment-day/spec.md`), cuyo FR-003 describía la intención pero cuya implementación resultante no reflejaba correctamente el caso `paymentDay == hoy`.
 
+## Clarifications
+
+### Session 2026-04-18
+
+- Q: ¿Se aplica la regla de diferimiento de FR-001 a las suscripciones abiertas (endDate = null) del mismo modo que a las suscripciones con fecha de fin? → A: Sí — se aplica la misma lógica de diferimiento; `paymentDay` ≥ hoy → mes actual, `paymentDay` < hoy → mes siguiente, igual que FR-001.
+- Q: Para Salario con 14 pagas, ¿las dos entradas de paga extra también usan `paymentDay` como día del mes, o caen en un día fijo independiente? → A: Las pagas extras respetan `paymentDay` — si `paymentDay=15`, la paga extra cae el día 15 del mes extra correspondiente.
+- Q: ¿Qué debe ocurrir cuando la primera ocurrencia calculada (FR-001) cae después de la `endDate` del template? → A: El sistema impide guardar el template y muestra un error: "El día de pago ya pasó este mes y la fecha de fin no alcanza al mes siguiente".
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — Primer pago en el mismo día de hoy (Priority: P1)
@@ -69,7 +77,10 @@ El usuario crea una entrada recurrente mensual y el día de pago configurado ya 
 - ¿Qué ocurre si paymentDay=31 y el mes siguiente solo tiene 28 días? → La primera entrada se genera el último día del mes siguiente (28 o 29), consistente con el comportamiento definido en spec 005 FR-004.
 - ¿Qué ocurre si el usuario guarda el recurrente en el último día del mes (p.ej. día 31) con paymentDay=31? → Se genera la entrada hoy (paymentDay == hoy).
 - ¿Afecta este cambio a entradas recurrentes anuales? → No. Solo aplica a recurrentes mensuales (Suscripción, Financiación, Salario). Las anuales mantienen el comportamiento de spec 005.
+- ¿Se aplica la regla de diferimiento a suscripciones abiertas (endDate = null)? → Sí. El comportamiento es idéntico al de Suscripción con fecha de fin; `paymentDay` determina cuándo cae la primera (y cada posterior) ocurrencia independientemente de si hay fecha de fin.
+- ¿Las entradas de paga extra de un Salario con 14 pagas también usan `paymentDay`? → Sí. La paga extra cae en `paymentDay` del mes de paga extra; si `paymentDay` excede los días del mes, se usa el último día del mes (consistente con FR-004).
 - ¿Qué ocurre con entradas recurrentes mensuales ya guardadas antes de esta feature? → No se regeneran ni se recalculan; el nuevo comportamiento solo aplica a entradas creadas a partir de esta feature.
+- ¿Qué ocurre si la primera ocurrencia calculada (FR-001) cae después de la `endDate` del template? → El sistema impide guardar el template y muestra un error explicativo ("El día de pago ya pasó este mes y la fecha de fin no alcanza al mes siguiente"); el template no se persiste.
 
 ## Requirements *(mandatory)*
 
@@ -79,7 +90,8 @@ El usuario crea una entrada recurrente mensual y el día de pago configurado ya 
 - **FR-002**: El sistema DEBE generar la primera entrada de transacción en el momento del guardado únicamente si la primera ocurrencia calculada según FR-001 corresponde a la fecha de hoy. Si la primera ocurrencia cae en el futuro, la entrada se generará cuando la app se lance en esa fecha o posterior a ella, siguiendo el mecanismo de generación existente (FR-014 de spec 001).
 - **FR-003**: En ningún caso el sistema DEBE generar una entrada con fecha anterior a la fecha de hoy al guardar un nuevo recurrente mensual.
 - **FR-004**: Para el cálculo del mes siguiente según FR-001, si `paymentDay` excede el número de días del mes siguiente, el sistema DEBE usar el último día de ese mes (consistente con spec 005 FR-004).
-- **FR-005**: Este comportamiento DEBE aplicarse por igual a los tres tipos de recurrentes mensuales: Suscripción, Financiación y Salario.
+- **FR-005**: Este comportamiento DEBE aplicarse por igual a los tres tipos de recurrentes mensuales: Suscripción (con o sin fecha de fin, incluyendo suscripciones abiertas con `endDate = null`), Financiación y Salario. Para Salario con 14 pagas, las entradas de paga extra también DEBEN caer en `paymentDay` del mes extra correspondiente (aplicando la misma regla de último día válido del mes si `paymentDay` excede la longitud del mes).
+- **FR-006**: Al guardar un recurrente mensual con `endDate` definida, el sistema DEBE verificar que la primera ocurrencia calculada según FR-001 no supera `endDate`. Si la primera ocurrencia cae después de `endDate`, el sistema DEBE rechazar el guardado y mostrar un mensaje de error explicativo; el template NO DEBE persistirse. Este requisito no aplica a suscripciones abiertas (`endDate = null`).
 
 ### Key Entities
 

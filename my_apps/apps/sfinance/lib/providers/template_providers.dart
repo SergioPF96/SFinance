@@ -18,7 +18,8 @@ class TemplateDisplay {
   final String name;
   final String categoryLabel;
   final String periodicity;
-  final DateTime endDate;
+  /// Null for open-ended subscriptions ("Sin fecha de fin").
+  final DateTime? endDate;
   final TransactionType transactionType;
 }
 
@@ -48,7 +49,7 @@ TemplateDisplay _toDisplay(RecurringTemplateRow row) {
     name: row.name,
     categoryLabel: catLabel,
     periodicity: perLabel,
-    endDate: row.endDate,
+    endDate: row.endDate, // nullable — null means open-ended
     transactionType: row.transactionType == 'income'
         ? TransactionType.income
         : TransactionType.expense,

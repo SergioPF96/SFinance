@@ -57,8 +57,8 @@ class $RecurringTemplatesTable extends RecurringTemplates
       const VerificationMeta('endDate');
   @override
   late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
-      'end_date', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+      'end_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _payFrequencyMeta =
       const VerificationMeta('payFrequency');
   @override
@@ -184,8 +184,6 @@ class $RecurringTemplatesTable extends RecurringTemplates
     if (data.containsKey('end_date')) {
       context.handle(_endDateMeta,
           endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta));
-    } else if (isInserting) {
-      context.missing(_endDateMeta);
     }
     if (data.containsKey('pay_frequency')) {
       context.handle(
@@ -249,7 +247,7 @@ class $RecurringTemplatesTable extends RecurringTemplates
       startDate: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
       endDate: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date'])!,
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
       payFrequency: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}pay_frequency']),
       extraPayMonth1: attachedDatabase.typeMapping
@@ -288,7 +286,9 @@ class RecurringTemplateRow extends DataClass
   /// "mensual" or "anual".
   final String periodicity;
   final DateTime startDate;
-  final DateTime endDate;
+
+  /// Null for open-ended subscriptions (sin fecha de fin).
+  final DateTime? endDate;
 
   /// "docepagas" or "catorcepagas". Null for non-salary templates.
   final String? payFrequency;
@@ -315,7 +315,7 @@ class RecurringTemplateRow extends DataClass
       required this.category,
       required this.periodicity,
       required this.startDate,
-      required this.endDate,
+      this.endDate,
       this.payFrequency,
       this.extraPayMonth1,
       this.extraPayMonth2,
@@ -333,7 +333,9 @@ class RecurringTemplateRow extends DataClass
     map['category'] = Variable<String>(category);
     map['periodicity'] = Variable<String>(periodicity);
     map['start_date'] = Variable<DateTime>(startDate);
-    map['end_date'] = Variable<DateTime>(endDate);
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
     if (!nullToAbsent || payFrequency != null) {
       map['pay_frequency'] = Variable<String>(payFrequency);
     }
@@ -363,7 +365,9 @@ class RecurringTemplateRow extends DataClass
       category: Value(category),
       periodicity: Value(periodicity),
       startDate: Value(startDate),
-      endDate: Value(endDate),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
       payFrequency: payFrequency == null && nullToAbsent
           ? const Value.absent()
           : Value(payFrequency),
@@ -395,7 +399,7 @@ class RecurringTemplateRow extends DataClass
       category: serializer.fromJson<String>(json['category']),
       periodicity: serializer.fromJson<String>(json['periodicity']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
-      endDate: serializer.fromJson<DateTime>(json['endDate']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
       payFrequency: serializer.fromJson<String?>(json['payFrequency']),
       extraPayMonth1: serializer.fromJson<int?>(json['extraPayMonth1']),
       extraPayMonth2: serializer.fromJson<int?>(json['extraPayMonth2']),
@@ -417,7 +421,7 @@ class RecurringTemplateRow extends DataClass
       'category': serializer.toJson<String>(category),
       'periodicity': serializer.toJson<String>(periodicity),
       'startDate': serializer.toJson<DateTime>(startDate),
-      'endDate': serializer.toJson<DateTime>(endDate),
+      'endDate': serializer.toJson<DateTime?>(endDate),
       'payFrequency': serializer.toJson<String?>(payFrequency),
       'extraPayMonth1': serializer.toJson<int?>(extraPayMonth1),
       'extraPayMonth2': serializer.toJson<int?>(extraPayMonth2),
@@ -436,7 +440,7 @@ class RecurringTemplateRow extends DataClass
           String? category,
           String? periodicity,
           DateTime? startDate,
-          DateTime? endDate,
+          Value<DateTime?> endDate = const Value.absent(),
           Value<String?> payFrequency = const Value.absent(),
           Value<int?> extraPayMonth1 = const Value.absent(),
           Value<int?> extraPayMonth2 = const Value.absent(),
@@ -452,7 +456,7 @@ class RecurringTemplateRow extends DataClass
         category: category ?? this.category,
         periodicity: periodicity ?? this.periodicity,
         startDate: startDate ?? this.startDate,
-        endDate: endDate ?? this.endDate,
+        endDate: endDate.present ? endDate.value : this.endDate,
         payFrequency:
             payFrequency.present ? payFrequency.value : this.payFrequency,
         extraPayMonth1:
@@ -568,7 +572,7 @@ class RecurringTemplatesCompanion
   final Value<String> category;
   final Value<String> periodicity;
   final Value<DateTime> startDate;
-  final Value<DateTime> endDate;
+  final Value<DateTime?> endDate;
   final Value<String?> payFrequency;
   final Value<int?> extraPayMonth1;
   final Value<int?> extraPayMonth2;
@@ -601,7 +605,7 @@ class RecurringTemplatesCompanion
     required String category,
     required String periodicity,
     required DateTime startDate,
-    required DateTime endDate,
+    this.endDate = const Value.absent(),
     this.payFrequency = const Value.absent(),
     this.extraPayMonth1 = const Value.absent(),
     this.extraPayMonth2 = const Value.absent(),
@@ -614,8 +618,7 @@ class RecurringTemplatesCompanion
         transactionType = Value(transactionType),
         category = Value(category),
         periodicity = Value(periodicity),
-        startDate = Value(startDate),
-        endDate = Value(endDate);
+        startDate = Value(startDate);
   static Insertable<RecurringTemplateRow> custom({
     Expression<int>? id,
     Expression<String>? name,
@@ -661,7 +664,7 @@ class RecurringTemplatesCompanion
       Value<String>? category,
       Value<String>? periodicity,
       Value<DateTime>? startDate,
-      Value<DateTime>? endDate,
+      Value<DateTime?>? endDate,
       Value<String?>? payFrequency,
       Value<int?>? extraPayMonth1,
       Value<int?>? extraPayMonth2,
@@ -1490,7 +1493,7 @@ typedef $$RecurringTemplatesTableCreateCompanionBuilder
   required String category,
   required String periodicity,
   required DateTime startDate,
-  required DateTime endDate,
+  Value<DateTime?> endDate,
   Value<String?> payFrequency,
   Value<int?> extraPayMonth1,
   Value<int?> extraPayMonth2,
@@ -1508,7 +1511,7 @@ typedef $$RecurringTemplatesTableUpdateCompanionBuilder
   Value<String> category,
   Value<String> periodicity,
   Value<DateTime> startDate,
-  Value<DateTime> endDate,
+  Value<DateTime?> endDate,
   Value<String?> payFrequency,
   Value<int?> extraPayMonth1,
   Value<int?> extraPayMonth2,
@@ -1787,7 +1790,7 @@ class $$RecurringTemplatesTableTableManager extends RootTableManager<
             Value<String> category = const Value.absent(),
             Value<String> periodicity = const Value.absent(),
             Value<DateTime> startDate = const Value.absent(),
-            Value<DateTime> endDate = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
             Value<String?> payFrequency = const Value.absent(),
             Value<int?> extraPayMonth1 = const Value.absent(),
             Value<int?> extraPayMonth2 = const Value.absent(),
@@ -1821,7 +1824,7 @@ class $$RecurringTemplatesTableTableManager extends RootTableManager<
             required String category,
             required String periodicity,
             required DateTime startDate,
-            required DateTime endDate,
+            Value<DateTime?> endDate = const Value.absent(),
             Value<String?> payFrequency = const Value.absent(),
             Value<int?> extraPayMonth1 = const Value.absent(),
             Value<int?> extraPayMonth2 = const Value.absent(),

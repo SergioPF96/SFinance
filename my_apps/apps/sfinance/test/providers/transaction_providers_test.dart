@@ -37,7 +37,7 @@ Future<int> insertTemplate(AppDatabase db) async {
           category: 'salario',
           periodicity: 'mensual',
           startDate: DateTime(2024, 1, 1),
-          endDate: DateTime(2026, 12, 31),
+          endDate: Value(DateTime(2026, 12, 31)),
         ),
       );
 }

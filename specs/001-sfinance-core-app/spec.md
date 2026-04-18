@@ -156,6 +156,7 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 - What happens when the user attempts to edit a saved transaction? → No editing affordance is provided; transactions are immutable after creation.
 - What happens when the user cancels the delete confirmation dialog? → The deletion is aborted; the transaction or template remains unchanged.
 - What happens when the user deletes a recurring template? → The template is removed; no future entries will be generated from it on subsequent app launches. All previously generated transaction entries for that template remain unchanged in the transaction list.
+- What happens if the user toggles "Sin fecha de fin" on and then off? → The endDate selector reappears and must be filled before saving; no previously selected date is remembered.
 
 ## Requirements *(mandatory)*
 
@@ -165,12 +166,12 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 
 - **FR-001**: The system MUST provide a "+ Gasto" modal for recording expense transactions with fields: Nombre (required), Monto (required, positive numeric), Descripción (optional), and Categoría (required, dropdown of predefined expense categories).
 - **FR-002**: The system MUST provide a "+ Ingreso" modal for recording income transactions with fields: Nombre (required), Monto (required, positive numeric), Descripción (optional), and Categoría (required, dropdown of predefined income categories).
-- **FR-003**: The expense form MUST show Periodicidad (Mensual/Anual) and Fecha de fin fields if and only if Categoría is Suscripción or Financiación; these fields MUST be hidden for all other expense categories.
+- **FR-003**: The expense form MUST show Periodicidad (Mensual/Anual) and Fecha de fin fields if and only if Categoría is Suscripción or Financiación; these fields MUST be hidden for all other expense categories. When Categoría is Suscripción, a "Sin fecha de fin" toggle MUST appear before the endDate selector. When the toggle is active, the endDate selector MUST be hidden.
 - **FR-004**: The income form MUST show a "Número de pagas" dropdown (12 pagas / 14 pagas) if and only if Categoría is Salario.
 - **FR-005**: When "14 pagas" is selected on the Salario income form, the system MUST show two independent month pickers labeled "Primera paga extra" and "Segunda paga extra".
 - **FR-006**: The two extra-payment month pickers for 14-paga salaries MUST enforce distinct month selections; the same month cannot be selected for both pickers.
 - **FR-007**: The Fecha de fin picker for Periodicidad=Mensual MUST allow selecting a month within a year (e.g. "Octubre de 2027"). The picker for Periodicidad=Anual MUST allow selecting a year only (e.g. "2029").
-- **FR-008**: Fecha de fin MUST always be required when Periodicidad is specified; open-ended recurrences are not permitted. The Fecha de fin picker MUST only allow future dates (today or later) since the start date is always today.
+- **FR-008**: For Financiación, endDate remains mandatory when Periodicidad is specified. For Suscripción, the user may toggle "Sin fecha de fin" (open-ended mode). When open-ended mode is active, the endDate field is hidden and no end date is stored; the subscription runs indefinitely until the user manually deletes the template. When open-ended mode is inactive, behaviour is identical to Financiación (endDate required, only future dates allowed). In both modes, a payDay selector (1–31) is always shown for Suscripción when Periodicidad is set. payDay is required whenever Periodicidad is set for a Suscripción.
 - **FR-009**: Monto MUST be stored in integer cents; the form MUST reject zero or negative amounts.
 - **FR-009b**: Individual transaction entries are read-only after creation; the user MUST NOT be able to edit any field of a saved transaction. Deletion of individual entries MUST be supported exclusively from the Entradas → Transacciones tab and MUST require an explicit confirmation dialog before the deletion is carried out. The Resumen "Transacciones Recientes" list MUST NOT expose a delete affordance.
 
@@ -179,7 +180,7 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 - **FR-010**: The system MUST provide exactly the following predefined expense categories and no others: Producto, Servicio, Suscripción, Suministro variable, Financiación.
 - **FR-011**: The system MUST provide exactly the following predefined income categories and no others: Salario, Venta, Servicio.
 - **FR-012**: Users MUST NOT be able to create, edit, or delete categories.
-- **FR-012b**: Recurring templates (Suscripción, Financiación, Salario) are immutable after creation; the user MUST NOT be able to edit any field of a saved template. Deletion of a template MUST be supported, MUST require an explicit confirmation dialog before the deletion is carried out, and MUST permanently stop future entry generation for that template without affecting any already-generated transaction entries.
+- **FR-012b**: Recurring templates (Suscripción, Financiación, Salario) are immutable after creation; the user MUST NOT be able to edit any field of a saved template. Deletion of a template MUST be supported, MUST require an explicit confirmation dialog before the deletion is carried out, and MUST permanently stop future entry generation for that template without affecting any already-generated transaction entries. For open-ended subscriptions, endDate is null; the template persists and generates entries indefinitely until deleted by the user.
 
 #### Recurring Entry Generation
 
@@ -246,7 +247,7 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 - **SC-001**: The user can record any transaction (one-off or recurring) in under 60 seconds from opening the entry modal to seeing it confirmed in the transaction list.
 - **SC-002**: All KPI values (Ingresos, Gastos, Balance) always reflect the correct calculated totals; no stale or cached values are ever displayed.
 - **SC-003**: Every displayed monetary amount includes an explicit currency symbol (€), locale-formatted separators, and an explicit sign (+ or −); no amount is displayed without all three elements.
-- **SC-004**: ~~On first save, a recurring entry generates exactly one transaction entry (for today's period). On each subsequent app launch, exactly one new entry is created per due period, with zero duplicate entries ever created for already-generated periods.~~ **Superseded by spec 006 SC-001**: The first entry is generated on `paymentDay` of the correct month (current if `paymentDay >= today`, next month if `paymentDay < today`). No premature or duplicate entries are ever created.
+- **SC-004**: ~~On first save, a recurring entry generates exactly one transaction entry (for today's period). On each subsequent app launch, exactly one new entry is created per due period, with zero duplicate entries ever created for already-generated periods.~~ **Superseded by spec 006 SC-001**: The first entry is generated on `paymentDay` of the correct month (current if `paymentDay >= today`, next month if `paymentDay < today`). No premature or duplicate entries are ever created. For open-ended subscriptions (endDate = null), entry generation continues on every app launch indefinitely, using payDay as the day-of-month reference, until the template is deleted.
 - **SC-005**: The application launches and displays the Resumen view with correct data within 3 seconds on the target desktop hardware, regardless of transaction volume.
 - **SC-006**: All interactive elements in the application can be reached and activated using only keyboard input, with no mouse or pointer device required.
 - **SC-007**: All text elements and interactive controls pass WCAG AA contrast ratio validation (minimum 4.5:1 for normal text, 3:1 for large text and UI components).

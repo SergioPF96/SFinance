@@ -7,6 +7,9 @@ class PeriodGenerator {
   /// min([today], [endDate]), excluding keys already generated
   /// (i.e. keys <= [lastGeneratedPeriod]).
   ///
+  /// When [endDate] is null (open-ended subscription), [today] is the sole
+  /// upper bound and entries are generated indefinitely.
+  ///
   /// For monthly templates, also excludes keys whose computed payment date
   /// (determined by [paymentDay] clamped to the month's length) is strictly
   /// after [today]. This prevents premature entry generation when the payment
@@ -22,7 +25,7 @@ class PeriodGenerator {
   /// - 14-paga extra: "YYYY-MM-extra"
   static List<String> computeDueKeys({
     required DateTime startDate,
-    required DateTime endDate,
+    required DateTime? endDate,
     required String periodicity,
     String? lastGeneratedPeriod,
     List<int>? extraPayMonths,
@@ -30,8 +33,10 @@ class PeriodGenerator {
     DateTime? today,
   }) {
     final now = today ?? DateTime.now();
-    // Cap the upper bound at min(today, endDate)
-    final upperBound = endDate.isBefore(now) ? endDate : now;
+    // Cap the upper bound at min(today, endDate).
+    // When endDate is null (open-ended subscription), today is the sole cap.
+    final upperBound =
+        endDate == null ? now : (endDate.isBefore(now) ? endDate : now);
 
     final allKeys = _generateAllKeys(
       startDate: startDate,
@@ -56,6 +61,33 @@ class PeriodGenerator {
     return keys
         .where((key) => _compareKeys(key, lastGeneratedPeriod) > 0)
         .toList();
+  }
+
+  /// Returns the date of the first occurrence for a new monthly recurring
+  /// template, given [today] and [paymentDay].
+  ///
+  /// Rule (FR-001 / FR-006):
+  /// - If [paymentDay] clamped to the current month's length is >= [today.day],
+  ///   the first occurrence is in the current month.
+  /// - Otherwise the first occurrence is deferred to [paymentDay] of the next
+  ///   month (clamped to that month's length).
+  ///
+  /// December → January rollover is handled implicitly by [DateTime]'s
+  /// month-overflow normalization.
+  static DateTime firstOccurrenceDate({
+    required DateTime today,
+    required int paymentDay,
+  }) {
+    final daysThisMonth = _daysInMonth(today.year, today.month);
+    final clampedDay = paymentDay.clamp(1, daysThisMonth);
+    if (clampedDay >= today.day) {
+      return DateTime(today.year, today.month, clampedDay);
+    }
+    // paymentDay already passed this month → next month
+    final nextMonth = DateTime(today.year, today.month + 1);
+    final daysNextMonth = _daysInMonth(nextMonth.year, nextMonth.month);
+    return DateTime(
+        nextMonth.year, nextMonth.month, paymentDay.clamp(1, daysNextMonth));
   }
 
   /// Derives a [DateTime] for a period key using [paymentDay] as the day

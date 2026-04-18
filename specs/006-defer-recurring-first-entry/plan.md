@@ -1,23 +1,29 @@
 # Implementation Plan: Diferir primera entrada recurrente mensual según día de pago
 
-**Branch**: `006-defer-recurring-first-entry` | **Date**: 2026-04-16 | **Spec**: [spec.md](spec.md)
+**Branch**: `006-defer-recurring-first-entry` | **Date**: 2026-04-18 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/006-defer-recurring-first-entry/spec.md`
 
 ## Summary
 
-Cambiar la generación de la primera entrada de recurrentes mensuales para que respete `paymentDay`: si el día de pago ya pasó en el mes en curso, diferir al mes siguiente; si aún no ha llegado, programar para ese día (sin generarla prematuramente); si coincide con hoy, generar de inmediato. El cambio unifica la lógica de generación: PeriodGenerator gana filtrado por fecha exacta (no solo por mes), y los form providers dejan de generar la primera entrada manualmente, delegando en RecurringGenerationService.
+Monthly recurring templates (Suscripción, Financiación, Salario) defer their first generated entry according to the rule: `paymentDay ≥ today → current month`; `paymentDay < today → next month`. The core deferral pipeline is already implemented via `PeriodGenerator.computeDueKeys` (shared_services) plus form-provider logic that shifts `startDate` forward when `paymentDay` has already passed. This plan covers the remaining work introduced by the 2026-04-18 clarifications:
+
+1. **FR-006 (new)** — Save-time validation: reject template persistence when the calculated first occurrence falls after `endDate`. Pure-logic check added to form providers before the insert.
+2. **FR-005 clarification (extra pagas)** — Verify that 14-paga extra entries respect `paymentDay`. `PeriodGenerator.dateForKey` already clamps `paymentDay` for `YYYY-MM-extra` keys; coverage adds explicit regression tests.
+3. **FR-005 clarification (open-ended Suscripción)** — Tolerate `endDate = null` in the calc pipeline. Full schema/UI for nullable endDate is owned by spec 001's open-ended subscription amendment; this plan delivers only the generator/validator tolerance for null so the two features compose cleanly.
+
+No new dependencies. No UI layout changes (error toast/inline message reuses existing form error surface).
 
 ## Technical Context
 
-**Language/Version**: Dart (Flutter stable channel)  
-**Primary Dependencies**: flutter_riverpod, go_router, drift ^2.20.0, shared_ui, shared_models, shared_services  
-**Storage**: Drift (SQLite), local on-device only  
-**Testing**: flutter_test, Riverpod test utilities  
-**Target Platform**: Desktop (primary), Android (planned)  
-**Project Type**: desktop-app (Flutter)  
-**Performance Goals**: N/A (local single-user app, no change in performance profile)  
-**Constraints**: Offline-only, no network calls, no sensitive data in logs  
-**Scale/Scope**: Single user, ~dozens of recurring templates
+**Language/Version**: Dart (Flutter stable channel)
+**Primary Dependencies**: Riverpod, Drift, intl (all already in use)
+**Storage**: SQLite via Drift on-device
+**Testing**: `flutter_test`, Riverpod test utilities
+**Target Platform**: Desktop (Windows/macOS/Linux); Android planned
+**Project Type**: Flutter monorepo (Melos)
+**Performance Goals**: First-occurrence calculation < 1 ms; save-time validation adds no perceptible latency
+**Constraints**: Offline-only; no network, no telemetry; no UI redesign
+**Scale/Scope**: Single user; < 10 000 templates lifetime
 
 ## Constitution Check
 
@@ -25,15 +31,29 @@ Cambiar la generación de la primera entrada de recurrentes mensuales para que r
 
 | Principle | Check | Notes |
 |-----------|-------|-------|
-| I. Monorepo & Shared Code | PeriodGenerator lives in `shared_services` — correct location. No public API breakage: `computeDueKeys()` gains an optional `paymentDay` parameter with default value 1. | PASS |
-| II. Riverpod-Only State | No new state management. Form notifiers already use Riverpod. | PASS |
-| III. UI/Business Logic Separation | The change removes business logic from form providers (first-entry generation) and centralizes it in PeriodGenerator + RecurringGenerationService. Net improvement. No UI changes. | PASS |
-| IV. Test-First for Financial Logic | First-entry date calculation is financial logic. Tests MUST be written and confirmed failing before implementation. | ENFORCED |
-| V. Offline-First & Privacy | No network calls introduced. No sensitive data exposed. | PASS |
-| VI. Financial UX Clarity | No UI changes. Currency/date formatting unaffected. | PASS |
-| VII. Simplicity | No new dependencies. Reduces code duplication (eliminates duplicated skip logic from two form notifiers). Architecture becomes simpler: one code path for all entry generation. | PASS |
+| I. Monorepo & Shared Code | New pure logic extends `PeriodGenerator` in `packages/shared_services`; form validation hook stays in `apps/sfinance`. No package public API breakage (only additive helper and null-tolerance). | PASS |
+| II. Riverpod-Only State | Save-time validation lives in the existing `expenseFormProvider` / `incomeFormProvider` (Riverpod `StateNotifier`s). No `setState`. | PASS |
+| III. UI/Business Logic Separation | Calculation + validation rules are pure Dart in `shared_services`; providers orchestrate; widgets only display the error string. Models remain pure Dart. | PASS |
+| IV. Test-First for Financial Logic | New `PeriodGenerator.firstOccurrenceDate` helper and the provider's pre-insert validation path are financial logic. Unit tests written and confirmed failing before implementation. | PASS (enforced in tasks) |
+| V. Offline-First & Privacy | No network. Error messages contain no amount/balance/category data — only date-range wording. | PASS |
+| VI. Financial UX Clarity | Error string locale-aware (Spanish), renders via existing inline form error with WCAG-AA contrast. Touch/keyboard parity preserved. | PASS |
+| VII. Simplicity | No new dependencies. One new pure function. Validation is a one-liner at the top of the existing save path. No new abstraction layers. | PASS |
 
-> No violations. Complexity Tracking table not needed.
+No violations → Complexity Tracking table stays empty.
+
+### Post-Phase-1 re-check
+
+Re-evaluated after data-model.md, contracts/period_generator.md, and quickstart.md were written:
+
+- **Principle I** — `firstOccurrenceDate` goes into the existing `PeriodGenerator` in `packages/shared_services`; no new package, no public API breakage (additive). ✅
+- **Principle II** — No changes to state management; validation lives in the existing Riverpod `StateNotifier`. ✅
+- **Principle III** — Contract (`contracts/period_generator.md`) confirms pure-Dart helper with no Flutter imports. Error message is a const string consumed by the existing widget that already displays `errorMessage`. ✅
+- **Principle IV** — Tasks file will enforce test-first; helper + validator are financial-logic candidates. ✅
+- **Principle V** — No network, no logging of amounts/categories in the new error path. ✅
+- **Principle VI** — Spanish error string is unambiguous, renders via the existing accessible inline error; no hover-only affordance. ✅
+- **Principle VII** — One pure function + one if-block. No new package, no new layer. ✅
+
+Gate still PASS. Complexity Tracking remains empty.
 
 ## Project Structure
 
@@ -45,85 +65,38 @@ specs/006-defer-recurring-first-entry/
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
-├── contracts/           # Phase 1 output (empty — no UI changes)
+├── contracts/           # Phase 1 output (pure-function contracts)
 └── tasks.md             # Phase 2 output (/speckit.tasks)
 ```
 
-### Source Code (files affected)
+### Source Code (monorepo)
 
 ```text
 my_apps/
-├── packages/
-│   └── shared_services/
-│       ├── lib/src/generation/
-│       │   └── period_generator.dart        # Add paymentDay-aware date filtering
-│       └── test/generation/
-│           └── period_generator_test.dart    # New tests for paymentDay filtering
 ├── apps/
 │   └── sfinance/
 │       ├── lib/
-│       │   ├── providers/
-│       │   │   └── form_providers.dart       # Remove manual first-entry generation, delegate to service
-│       │   └── services/
-│       │       └── recurring_generation_service.dart  # Extract generateForTemplate(), use PeriodGenerator for date computation
+│       │   └── providers/
+│       │       └── form_providers.dart          # add pre-insert validation (FR-006)
 │       └── test/
-│           ├── services/
-│           │   └── recurring_generation_service_test.dart  # Update tests for new behavior
 │           └── providers/
-│               └── form_providers_test.dart  # Update tests (if existing)
+│               ├── expense_form_provider_test.dart   # new FR-006 cases
+│               └── income_form_provider_test.dart    # new FR-006 cases
+└── packages/
+    └── shared_services/
+        ├── lib/
+        │   └── src/
+        │       └── generation/
+        │           └── period_generator.dart    # add firstOccurrenceDate(); null-tolerant endDate
+        └── test/
+            └── generation/
+                └── period_generator_test.dart   # new firstOccurrenceDate + extra-paga + null-endDate cases
 ```
 
-**Structure Decision**: No new files or directories. All changes are modifications to existing files within their current locations.
-
-## Architecture
-
-### Current flow (problem)
-
-```
-Form save → Form notifier computes firstDate manually (skip logic) →
-            Inserts template + first Transaction always →
-            Sets lastGeneratedPeriod
-
-App launch → RecurringGenerationService.run() →
-             PeriodGenerator.computeDueKeys() (month-level only) →
-             Generate entries for due months
-```
-
-**Issues**:
-1. Form notifiers have duplicated skip logic (ExpenseFormNotifier lines 147–171, IncomeFormNotifier lines 382–394)
-2. First entry is always generated at save time, even when paymentDay is in the future (e.g., paymentDay=20, today=16 → creates April 20th entry prematurely on April 16th)
-3. PeriodGenerator only checks month-level boundaries, not exact dates within the month
-
-### Target flow (solution)
-
-```
-Form save → Form notifier computes startDate (skip logic) →
-            Inserts template with lastGeneratedPeriod = null →
-            Calls RecurringGenerationService.generateForTemplate() →
-            PeriodGenerator.computeDueKeys() (date-level filtering) →
-            Generate entries only if computed date ≤ today
-
-App launch → RecurringGenerationService.run() →
-             Same PeriodGenerator path for all templates
-```
-
-**Improvements**:
-1. Single code path: PeriodGenerator handles all date-level filtering
-2. No premature entries: paymentDay=20 on April 16 → no entry until April 20
-3. Form notifiers only compute startDate and save template, then delegate
-
-### Key design decisions
-
-1. **PeriodGenerator gains `paymentDay` parameter**: `computeDueKeys()` gets `int paymentDay = 1`. After generating month keys, it filters out keys whose computed date (year, month, clamped paymentDay) is strictly after today. This is backward-compatible (default=1 preserves current behavior for callers that don't pass paymentDay).
-
-2. **`_dateForKey()` extracted to PeriodGenerator**: Currently `_dateForPeriod()` lives only in RecurringGenerationService. The date computation logic (period key + paymentDay → DateTime) is moved to PeriodGenerator as a static method, since PeriodGenerator now needs it for filtering. RecurringGenerationService delegates to PeriodGenerator instead of duplicating.
-
-3. **`RecurringGenerationService.generateForTemplate()` extracted**: The per-template loop body from `run()` becomes a public static method. Form providers call it after saving a template. `run()` calls it for each template.
-
-4. **startDate computation stays in form providers**: The "which month is the first eligible month" logic (`paymentDay < today.day → next month`) remains in form providers because it determines the template's `startDate` field. PeriodGenerator doesn't compute startDate; it filters within the range [startDate..today].
-
-5. **Form providers stop generating entries manually**: After saving the template (with `lastGeneratedPeriod = null`), they call `generateForTemplate()`. If paymentDay == today.day, PeriodGenerator includes the current month key, and an entry is generated. If paymentDay > today.day, the key is excluded, and no entry is generated yet.
+**Structure Decision**: Pure calculation helper lives in `packages/shared_services/lib/src/generation/period_generator.dart` (where `PeriodGenerator.dateForKey` and `computeDueKeys` already live). Save-time validation hook and user-facing error message live in `apps/sfinance/lib/providers/form_providers.dart` where the existing recurring-template save path already resides. This preserves Principle I (shared logic in packages) and Principle III (UI layer free of business logic).
 
 ## Complexity Tracking
 
-> No violations found. Table not needed.
+> Fill ONLY if Constitution Check has violations that must be justified.
+
+No violations. Table intentionally empty.
