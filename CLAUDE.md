@@ -56,6 +56,8 @@ well-maintained over cutting-edge. No premature abstractions.
 - Dart (Flutter stable channel) + flutter_riverpod, go_router, drift, shared_ui, shared_models, shared_services (003-unify-entries-view)
 - Drift (SQLite), local on-device only (003-unify-entries-view)
 - Dart (Flutter stable channel) + flutter_riverpod, go_router, drift ^2.20.0, shared_ui, shared_models, shared_services (005-recurring-payment-day)
+- Dart (Flutter stable channel) + Riverpod, Drift, intl (all already in use) (006-defer-recurring-first-entry)
+- SQLite via Drift on-device (006-defer-recurring-first-entry)
 
 - **Framework**: Flutter (stable channel)
 - **Language**: Dart
