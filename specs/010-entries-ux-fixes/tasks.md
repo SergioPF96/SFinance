@@ -133,7 +133,7 @@
 
 - [x] T016 [P] Ejecutar `flutter analyze` en `my_apps/apps/sfinance` y en `my_apps/packages/shared_ui`; corregir cualquier warning introducido por este feature
 - [x] T017 Ejecutar suite completa de tests: `flutter test` en `my_apps/apps/sfinance` y `my_apps/packages/shared_ui`; confirmar 0 fallos
-- [ ] T018 Validación manual según `specs/010-entries-ux-fixes/quickstart.md`: recorrer US1–US4 con la app corriendo en Windows
+- [x] T018 Validación manual según `specs/010-entries-ux-fixes/quickstart.md`: recorrer US1–US4 con la app corriendo en Windows
 
 ---
 
