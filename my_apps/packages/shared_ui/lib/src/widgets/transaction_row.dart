@@ -55,7 +55,7 @@ class TransactionRow extends StatelessWidget {
     final subtitle = '$categoryLabel · ${DateFormatter.format(date)}';
 
     Widget avatar = CircleAvatar(
-      backgroundColor: _color.withOpacity(0.15),
+      backgroundColor: _color.withValues(alpha: 0.15),
       child: Icon(
         _isIncome ? Icons.arrow_upward : Icons.arrow_downward,
         color: _color,
@@ -82,32 +82,19 @@ class TransactionRow extends StatelessWidget {
       );
     }
 
-    // Wrap avatar with recurringDetail label below when present
-    Widget leading = avatar;
-    if (isRecurring && recurringDetail != null) {
-      leading = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          avatar,
-          const SizedBox(height: 2),
-          Text(
-            recurringDetail!,
-            style: TextStyle(fontSize: 10, color: _color),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      );
-    }
+    final fullSubtitle = (isRecurring && recurringDetail != null)
+        ? '$subtitle · $recurringDetail'
+        : subtitle;
 
     return ListTile(
-      leading: leading,
+      leading: avatar,
       title: Text(
         name,
         style: const TextStyle(color: AppColors.onBackground),
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        subtitle,
+        fullSubtitle,
         style: const TextStyle(color: AppColors.onBackgroundMuted, fontSize: 12),
       ),
       trailing: Row(

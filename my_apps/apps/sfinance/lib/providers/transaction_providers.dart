@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_services/shared_services.dart';
 import 'package:shared_ui/shared_ui.dart' hide TransactionRow;
 import 'package:shared_models/shared_models.dart';
+import '../domain/category_filter.dart';
 import '../domain/time_range.dart';
 import 'dao_providers.dart';
 
@@ -13,6 +14,7 @@ class TransactionDisplay {
     required this.id,
     required this.name,
     required this.categoryLabel,
+    required this.rawCategory,
     required this.date,
     required this.amountCents,
     required this.transactionType,
@@ -25,6 +27,9 @@ class TransactionDisplay {
   final int id;
   final String name;
   final String categoryLabel;
+
+  /// Raw category value as stored in the database (e.g. 'suscripcion', 'salario').
+  final String rawCategory;
   final DateTime date;
   final int amountCents;
   final TransactionType transactionType;
@@ -92,6 +97,7 @@ TransactionDisplay _toDisplay(
     id: row.id,
     name: row.name,
     categoryLabel: label,
+    rawCategory: row.category,
     date: row.date,
     amountCents: row.amountCents,
     transactionType: type,
@@ -153,3 +159,25 @@ final unifiedEntriesProvider =
         );
   },
 );
+
+/// Selected category filter for the Entradas view.
+/// Manually reset to [CategoryFilter.all] when the view is disposed via
+/// [ref.invalidate].
+final selectedCategoryFilterProvider =
+    StateProvider<CategoryFilter>((ref) => CategoryFilter.all);
+
+/// Entries filtered by both the selected time range and category filter.
+/// Combines [unifiedEntriesProvider] + [selectedCategoryFilterProvider].
+final filteredEntriesProvider =
+    Provider.autoDispose<AsyncValue<List<TransactionDisplay>>>((ref) {
+  final range = ref.watch(selectedTimeRangeProvider).toDateRange();
+  final category = ref.watch(selectedCategoryFilterProvider);
+  final entriesAsync = ref.watch(
+    unifiedEntriesProvider(
+      DateTimeRange(start: range.start, end: range.end),
+    ),
+  );
+  return entriesAsync.whenData(
+    (list) => list.where((e) => category.matches(e.rawCategory)).toList(),
+  );
+});

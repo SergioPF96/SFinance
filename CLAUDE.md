@@ -60,6 +60,8 @@ well-maintained over cutting-edge. No premature abstractions.
 - SQLite via Drift on-device (006-defer-recurring-first-entry)
 - Dart 3.x — Flutter stable + flutter_riverpod, go_router, drift ^2.20.0, shared_ui, shared_models, shared_services (009-recurring-templates-view)
 - SQLite local vía Drift. Sin cambio de esquema (v3 se mantiene). (009-recurring-templates-view)
+- Dart 3.x — Flutter stable + flutter_riverpod, go_router, drift ^2.20.0, fl_chart, intl, shared_ui, shared_models, shared_services (010-entries-ux-fixes)
+- SQLite (Drift) local on-device — sin cambios de esquema (010-entries-ux-fixes)
 
 - **Framework**: Flutter (stable channel)
 - **Language**: Dart
