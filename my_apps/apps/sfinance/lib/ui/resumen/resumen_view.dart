@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../providers/kpi_provider.dart';
 import '../../providers/transaction_providers.dart';
-import '../../providers/chart_providers.dart';
 import 'monthly_bar_chart.dart';
+import 'initial_capital_dialog.dart';
+import '../../providers/initial_capital_provider.dart';
 
 /// Resumen dashboard view — KPI strip, monthly bar chart, recent transactions.
 ///
@@ -44,10 +45,17 @@ class _KpiStrip extends ConsumerWidget {
       error: (e, _) =>
           Text('Error: $e', style: const TextStyle(color: AppColors.expense)),
       data: (kpi) {
-        // Balance card gets an inline editor when no transactions yet
-        Widget? capitalEditor;
-        if (!kpi.hasTransactions) {
-          capitalEditor = _InitialCapitalEditor(capitalAsync: capitalAsync);
+        final capitalNotSet = capitalAsync.valueOrNull?.isActive != true;
+        if (!kpi.hasTransactions && capitalNotSet) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const InitialCapitalDialog(),
+              );
+            }
+          });
         }
 
         return Row(
@@ -80,76 +88,11 @@ class _KpiStrip extends ConsumerWidget {
                     : AppColors.expense,
                 isIncome: kpi.balanceCents >= 0,
                 showSign: kpi.balanceCents != 0,
-                child: capitalEditor,
               ),
             ),
           ],
         );
       },
-    );
-  }
-}
-
-class _InitialCapitalEditor extends ConsumerStatefulWidget {
-  const _InitialCapitalEditor({required this.capitalAsync});
-
-  final AsyncValue<InitialCapitalState> capitalAsync;
-
-  @override
-  ConsumerState<_InitialCapitalEditor> createState() =>
-      _InitialCapitalEditorState();
-}
-
-class _InitialCapitalEditorState
-    extends ConsumerState<_InitialCapitalEditor> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            style: const TextStyle(
-                color: AppColors.onBackground, fontSize: 13),
-            decoration: const InputDecoration(
-              hintText: 'Capital inicial (€)',
-              hintStyle:
-                  TextStyle(color: AppColors.onBackgroundMuted, fontSize: 12),
-              isDense: true,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            ),
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-          ),
-        ),
-        const SizedBox(width: 4),
-        TextButton(
-          onPressed: () async {
-            final text = _controller.text.replaceAll(',', '.');
-            final val = double.tryParse(text);
-            if (val == null || val < 0) return;
-            final cents = (val * 100).round();
-            await ref
-                .read(initialCapitalProvider.notifier)
-                .setInitialCapital(cents);
-            _controller.clear();
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.balance,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-          ),
-          child: const Text('OK', style: TextStyle(fontSize: 12)),
-        ),
-      ],
     );
   }
 }
