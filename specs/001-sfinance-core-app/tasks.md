@@ -150,9 +150,9 @@
 
 ## Phase 6: User Story 4 — View the Resumen Dashboard (Priority: P4)
 
-**Goal**: Resumen view is complete: KPI strip (Ingresos, Gastos, Balance), editable Balance/initial capital before first transaction, Resumen Mensual grouped bar chart (last 6 months), Transacciones Recientes list.
+**Goal**: Resumen view is complete: KPI strip (Ingresos, Gastos, Balance), first-launch modal for initial capital, Resumen Mensual grouped bar chart (last 6 months), Transacciones Recientes list.
 
-**Independent Test**: Record a mix of income and expense entries across multiple months → KPI cards show correct current-month totals; bar chart shows last 6 months with correct green/red bars; recent list shows correctly formatted rows. On a fresh install with no transactions → Balance card is editable; entering initial capital updates the Balance KPI.
+**Independent Test**: Record a mix of income and expense entries across multiple months → KPI cards show correct current-month totals; bar chart shows last 6 months with correct green/red bars; recent list shows correctly formatted rows. On a fresh install with no transactions and no initial capital set → non-dismissable modal dialog appears; entering and confirming a balance closes the dialog and updates the Balance KPI.
 
 ### Tests for US4 (financial logic — constitution requirement)
 
@@ -163,7 +163,7 @@
 - [X] T050 [US4] Implement monthlyChartProvider (AsyncNotifier watching TransactionDao; computes MonthlyChartData for last 6 months; aggregates ingresosCents and gastosCents per calendar month; includes abbreviated Spanish month label) in my_apps/apps/sfinance/lib/providers/chart_providers.dart — T049 tests must be green before this task is done
 - [X] T051 [US4] Implement initialCapitalProvider (AsyncNotifier watching InitialCapitalDao; exposes amountCents and isActive; provides setInitialCapital action; automatically inactive once first transaction exists per hasTransactions from kpiProvider) in my_apps/apps/sfinance/lib/providers/chart_providers.dart
 - [X] T052 [US4] Build ResumenMensual grouped bar chart widget (fl_chart BarChart with BarChartGroupData; green bars for ingresos, red bars for gastos; month labels on x-axis; watching monthlyChartProvider) in my_apps/apps/sfinance/lib/ui/resumen/monthly_bar_chart.dart
-- [X] T053 [US4] Integrate bar chart and initial capital editor into Resumen view: add MonthlyBarChart below KPI strip; add inline amount editor to Balance KpiCard when initialCapitalProvider reports active and no transactions exist in my_apps/apps/sfinance/lib/ui/resumen/resumen_view.dart
+- [X] T053 [US4] Integrate bar chart and initial capital dialog into Resumen view: add MonthlyBarChart below KPI strip; trigger non-dismissable InitialCapitalDialog via addPostFrameCallback when hasTransactions==false AND initialCapitalProvider.isActive==false; dialog lives in lib/ui/resumen/initial_capital_dialog.dart in my_apps/apps/sfinance/lib/ui/resumen/resumen_view.dart
 
 **Checkpoint**: US4 fully functional. Resumen dashboard is complete and correct.
 
