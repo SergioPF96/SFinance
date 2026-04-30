@@ -69,16 +69,18 @@ void main() {
     final jan2026 = DateTime(2026, 1, 1);
     final dec2026 = DateTime(2026, 12, 31);
 
-    test('generates exactly one entry on first save (current period)', () async {
+    test('generates exactly one entry on first save (current period)',
+        () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Salario',
-          periodicity: 'mensual',
-          startDate: jan2026,
-          endDate: dec2026,
-          lastGeneratedPeriod: '2026-01', // already generated first entry
+      await insertTemplate(
+        db,
+        name: 'Salario',
+        periodicity: 'mensual',
+        startDate: jan2026,
+        endDate: dec2026,
+        lastGeneratedPeriod: '2026-01', // already generated first entry
       );
 
       final today = DateTime(2026, 2, 15);
@@ -94,14 +96,15 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Suscripcion',
-          periodicity: 'mensual',
-          startDate: jan2026,
-          endDate: dec2026,
-          lastGeneratedPeriod: '2026-01',
-          transactionType: 'expense',
-          category: 'suscripcion',
+      await insertTemplate(
+        db,
+        name: 'Suscripcion',
+        periodicity: 'mensual',
+        startDate: jan2026,
+        endDate: dec2026,
+        lastGeneratedPeriod: '2026-01',
+        transactionType: 'expense',
+        category: 'suscripcion',
       );
 
       // Simulate app launched 4 months later
@@ -118,15 +121,16 @@ void main() {
       final db = container.read(databaseProvider);
 
       // Template: monthly salary, 14-paga, bonus in July and December
-      final templateId = await insertTemplate(db,
-          name: 'Salario 14 pagas',
-          periodicity: 'mensual',
-          startDate: jan2026,
-          endDate: dec2026,
-          lastGeneratedPeriod: '2026-06',
-          payFrequency: 'catorcepagas',
-          extraPayMonth1: 7,
-          extraPayMonth2: 12,
+      final templateId = await insertTemplate(
+        db,
+        name: 'Salario 14 pagas',
+        periodicity: 'mensual',
+        startDate: jan2026,
+        endDate: dec2026,
+        lastGeneratedPeriod: '2026-06',
+        payFrequency: 'catorcepagas',
+        extraPayMonth1: 7,
+        extraPayMonth2: 12,
       );
 
       // Launch in July: should generate regular July + extra July
@@ -142,12 +146,13 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Salario',
-          periodicity: 'mensual',
-          startDate: jan2026,
-          endDate: dec2026,
-          lastGeneratedPeriod: '2026-04',
+      await insertTemplate(
+        db,
+        name: 'Salario',
+        periodicity: 'mensual',
+        startDate: jan2026,
+        endDate: dec2026,
+        lastGeneratedPeriod: '2026-04',
       );
 
       // Same-day re-launch — April already generated
@@ -162,14 +167,15 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Suscripcion',
-          periodicity: 'mensual',
-          startDate: jan2026,
-          endDate: DateTime(2026, 3, 31), // ends in March
-          lastGeneratedPeriod: '2026-01',
-          transactionType: 'expense',
-          category: 'suscripcion',
+      await insertTemplate(
+        db,
+        name: 'Suscripcion',
+        periodicity: 'mensual',
+        startDate: jan2026,
+        endDate: DateTime(2026, 3, 31), // ends in March
+        lastGeneratedPeriod: '2026-01',
+        transactionType: 'expense',
+        category: 'suscripcion',
       );
 
       // Launch in June — should only generate Feb and Mar
@@ -184,15 +190,16 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Deleted sub',
-          periodicity: 'mensual',
-          startDate: jan2026,
-          endDate: dec2026,
-          lastGeneratedPeriod: '2026-01',
-          isDeleted: true,
-          transactionType: 'expense',
-          category: 'suscripcion',
+      await insertTemplate(
+        db,
+        name: 'Deleted sub',
+        periodicity: 'mensual',
+        startDate: jan2026,
+        endDate: dec2026,
+        lastGeneratedPeriod: '2026-01',
+        isDeleted: true,
+        transactionType: 'expense',
+        category: 'suscripcion',
       );
 
       final today = DateTime(2026, 3, 1);
@@ -206,14 +213,15 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Seguro',
-          periodicity: 'anual',
-          startDate: DateTime(2024, 1, 1),
-          endDate: DateTime(2026, 12, 31),
-          lastGeneratedPeriod: '2024',
-          transactionType: 'expense',
-          category: 'suscripcion',
+      await insertTemplate(
+        db,
+        name: 'Seguro',
+        periodicity: 'anual',
+        startDate: DateTime(2024, 1, 1),
+        endDate: DateTime(2026, 12, 31),
+        lastGeneratedPeriod: '2024',
+        transactionType: 'expense',
+        category: 'suscripcion',
       );
 
       final today = DateTime(2026, 4, 7);
@@ -233,15 +241,16 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Sub 15',
-          periodicity: 'mensual',
-          startDate: DateTime(2026, 4, 1),
-          endDate: DateTime(2027, 12, 31),
-          lastGeneratedPeriod: '2026-03',
-          transactionType: 'expense',
-          category: 'suscripcion',
-          paymentDay: 15,
+      await insertTemplate(
+        db,
+        name: 'Sub 15',
+        periodicity: 'mensual',
+        startDate: DateTime(2026, 4, 1),
+        endDate: DateTime(2027, 12, 31),
+        lastGeneratedPeriod: '2026-03',
+        transactionType: 'expense',
+        category: 'suscripcion',
+        paymentDay: 15,
       );
 
       final today = DateTime(2026, 4, 15);
@@ -257,15 +266,16 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Sub 31',
-          periodicity: 'mensual',
-          startDate: DateTime(2026, 2, 1),
-          endDate: DateTime(2027, 12, 31),
-          lastGeneratedPeriod: '2026-01',
-          transactionType: 'expense',
-          category: 'suscripcion',
-          paymentDay: 31,
+      await insertTemplate(
+        db,
+        name: 'Sub 31',
+        periodicity: 'mensual',
+        startDate: DateTime(2026, 2, 1),
+        endDate: DateTime(2027, 12, 31),
+        lastGeneratedPeriod: '2026-01',
+        transactionType: 'expense',
+        category: 'suscripcion',
+        paymentDay: 31,
       );
 
       final today = DateTime(2026, 2, 28);
@@ -281,15 +291,16 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Sub 31',
-          periodicity: 'mensual',
-          startDate: DateTime(2026, 3, 1),
-          endDate: DateTime(2027, 12, 31),
-          lastGeneratedPeriod: '2026-02',
-          transactionType: 'expense',
-          category: 'suscripcion',
-          paymentDay: 31,
+      await insertTemplate(
+        db,
+        name: 'Sub 31',
+        periodicity: 'mensual',
+        startDate: DateTime(2026, 3, 1),
+        endDate: DateTime(2027, 12, 31),
+        lastGeneratedPeriod: '2026-02',
+        transactionType: 'expense',
+        category: 'suscripcion',
+        paymentDay: 31,
       );
 
       final today = DateTime(2026, 3, 31);
@@ -301,19 +312,21 @@ void main() {
           reason: 'March has 31 days — no clamping needed');
     });
 
-    test('annual: paymentDay=10, endDate.month=6 → June 10 of period year', () async {
+    test('annual: paymentDay=10, endDate.month=6 → June 10 of period year',
+        () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Seguro Anual',
-          periodicity: 'anual',
-          startDate: DateTime(2026, 1, 1),
-          endDate: DateTime(2026, 6, 30), // June
-          lastGeneratedPeriod: '2025',
-          transactionType: 'expense',
-          category: 'suscripcion',
-          paymentDay: 10,
+      await insertTemplate(
+        db,
+        name: 'Seguro Anual',
+        periodicity: 'anual',
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 6, 30), // June
+        lastGeneratedPeriod: '2025',
+        transactionType: 'expense',
+        category: 'suscripcion',
+        paymentDay: 10,
       );
 
       final today = DateTime(2026, 6, 30);
@@ -325,19 +338,21 @@ void main() {
           reason: 'Annual: paymentDay=10, month=June → June 10');
     });
 
-    test('annual: paymentDay=30, endDate.month=2 → Feb 28 (non-leap)', () async {
+    test('annual: paymentDay=30, endDate.month=2 → Feb 28 (non-leap)',
+        () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTemplate(db,
-          name: 'Seguro Feb',
-          periodicity: 'anual',
-          startDate: DateTime(2026, 1, 1),
-          endDate: DateTime(2026, 2, 28), // February
-          lastGeneratedPeriod: '2025',
-          transactionType: 'expense',
-          category: 'suscripcion',
-          paymentDay: 30,
+      await insertTemplate(
+        db,
+        name: 'Seguro Feb',
+        periodicity: 'anual',
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 2, 28), // February
+        lastGeneratedPeriod: '2025',
+        transactionType: 'expense',
+        category: 'suscripcion',
+        paymentDay: 30,
       );
 
       final today = DateTime(2026, 2, 28);
@@ -349,20 +364,22 @@ void main() {
           reason: 'Annual Feb (non-leap): day 30 clamps to 28');
     });
 
-    test('annual: paymentDay=29, endDate.month=2, leap year 2028 → Feb 29', () async {
+    test('annual: paymentDay=29, endDate.month=2, leap year 2028 → Feb 29',
+        () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
       // endDate month = February; year is irrelevant for month extraction
-      await insertTemplate(db,
-          name: 'Seguro Leap',
-          periodicity: 'anual',
-          startDate: DateTime(2028, 1, 1),
-          endDate: DateTime(2028, 2, 29), // February in a leap year
-          lastGeneratedPeriod: '2027',
-          transactionType: 'expense',
-          category: 'suscripcion',
-          paymentDay: 29,
+      await insertTemplate(
+        db,
+        name: 'Seguro Leap',
+        periodicity: 'anual',
+        startDate: DateTime(2028, 1, 1),
+        endDate: DateTime(2028, 2, 29), // February in a leap year
+        lastGeneratedPeriod: '2027',
+        transactionType: 'expense',
+        category: 'suscripcion',
+        paymentDay: 29,
       );
 
       final today = DateTime(2028, 2, 29);

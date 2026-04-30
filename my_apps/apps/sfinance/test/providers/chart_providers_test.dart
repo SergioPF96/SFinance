@@ -51,15 +51,13 @@ void main() {
   group('monthlyChartProvider', () {
     test('returns exactly 6 months', () async {
       final container = makeContainer();
-      final data =
-          await container.read(monthlyChartProvider(today).future);
+      final data = await container.read(monthlyChartProvider(today).future);
       expect(data.months.length, 6);
     });
 
     test('months with no transactions are all zeros', () async {
       final container = makeContainer();
-      final data =
-          await container.read(monthlyChartProvider(today).future);
+      final data = await container.read(monthlyChartProvider(today).future);
       for (final m in data.months) {
         expect(m.ingresosCents, 0);
         expect(m.gastosCents, 0);
@@ -70,15 +68,14 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTx(db, type: 'income', amountCents: 200000,
-          date: DateTime(2026, 4, 1));
-      await insertTx(db, type: 'expense', amountCents: 5000,
-          date: DateTime(2026, 4, 5));
-      await insertTx(db, type: 'income', amountCents: 150000,
-          date: DateTime(2026, 3, 15));
+      await insertTx(db,
+          type: 'income', amountCents: 200000, date: DateTime(2026, 4, 1));
+      await insertTx(db,
+          type: 'expense', amountCents: 5000, date: DateTime(2026, 4, 5));
+      await insertTx(db,
+          type: 'income', amountCents: 150000, date: DateTime(2026, 3, 15));
 
-      final data =
-          await container.read(monthlyChartProvider(today).future);
+      final data = await container.read(monthlyChartProvider(today).future);
 
       final april = data.months.last; // current month is last
       expect(april.ingresosCents, 200000);
@@ -91,8 +88,7 @@ void main() {
 
     test('current month is the last entry', () async {
       final container = makeContainer();
-      final data =
-          await container.read(monthlyChartProvider(today).future);
+      final data = await container.read(monthlyChartProvider(today).future);
       expect(data.months.last.label, 'Abr'); // April
     });
 
@@ -100,13 +96,12 @@ void main() {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
-      await insertTx(db, type: 'income', amountCents: 100,
-          date: DateTime(2026, 4, 1));
-      await insertTx(db, type: 'income', amountCents: 200,
-          date: DateTime(2026, 2, 1));
+      await insertTx(db,
+          type: 'income', amountCents: 100, date: DateTime(2026, 4, 1));
+      await insertTx(db,
+          type: 'income', amountCents: 200, date: DateTime(2026, 2, 1));
 
-      final data =
-          await container.read(monthlyChartProvider(today).future);
+      final data = await container.read(monthlyChartProvider(today).future);
 
       // Months: Nov, Dec, Jan, Feb, Mar, Apr
       final feb = data.months[data.months.length - 3];
@@ -123,9 +118,13 @@ void main() {
 
       final start = DateTime(2026, 4, 1);
       await insertTx(db, type: 'income', amountCents: 10000, date: start);
-      await insertTx(db, type: 'expense', amountCents: 3000,
+      await insertTx(db,
+          type: 'expense',
+          amountCents: 3000,
           date: start.add(const Duration(days: 1)));
-      await insertTx(db, type: 'income', amountCents: 5000,
+      await insertTx(db,
+          type: 'income',
+          amountCents: 5000,
           date: start.add(const Duration(days: 2)));
 
       final param = AnalysisChartParam(
@@ -164,7 +163,8 @@ void main() {
       expect(data.first.valueCents, 3000);
     });
 
-    test('ingresos chart aggregates income per day, excludes expenses', () async {
+    test('ingresos chart aggregates income per day, excludes expenses',
+        () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
@@ -194,15 +194,15 @@ void main() {
       final end = start.add(const Duration(days: 2));
 
       final [balanceData, gastosData, ingresosData] = await Future.wait([
-        container.read(analysisChartProvider(
-            AnalysisChartParam(chartType: ChartType.balance,
-                start: start, end: end)).future),
-        container.read(analysisChartProvider(
-            AnalysisChartParam(chartType: ChartType.gastos,
-                start: start, end: end)).future),
-        container.read(analysisChartProvider(
-            AnalysisChartParam(chartType: ChartType.ingresos,
-                start: start, end: end)).future),
+        container.read(analysisChartProvider(AnalysisChartParam(
+                chartType: ChartType.balance, start: start, end: end))
+            .future),
+        container.read(analysisChartProvider(AnalysisChartParam(
+                chartType: ChartType.gastos, start: start, end: end))
+            .future),
+        container.read(analysisChartProvider(AnalysisChartParam(
+                chartType: ChartType.ingresos, start: start, end: end))
+            .future),
       ]);
 
       expect(balanceData.last.valueCents, 7000);

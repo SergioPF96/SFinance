@@ -59,7 +59,8 @@ Future<void> insertTransactionForTemplate(
       );
 }
 
-Future<void> insertOneOffTransaction(AppDatabase db, {required DateTime date}) async {
+Future<void> insertOneOffTransaction(AppDatabase db,
+    {required DateTime date}) async {
   await db.into(db.transactions).insert(
         TransactionsCompanion.insert(
           name: 'One-off income',
@@ -77,56 +78,57 @@ Future<void> insertOneOffTransaction(AppDatabase db, {required DateTime date}) a
 
 void main() {
   group('unifiedEntriesProvider — isRecurring derivation', () {
-    test(
-        'one-off transaction (no templateId) → isRecurring = false',
-        () async {
+    test('one-off transaction (no templateId) → isRecurring = false', () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
       await insertOneOffTransaction(db, date: DateTime(2025, 6, 1));
 
-      final entries = await container.read(unifiedEntriesProvider(_range).future);
+      final entries =
+          await container.read(unifiedEntriesProvider(_range).future);
 
       expect(entries.length, 1);
       expect(entries.first.isRecurring, false);
       expect(entries.first.templateId, null);
     });
 
-    test(
-        'transaction from active template → isRecurring = true',
-        () async {
+    test('transaction from active template → isRecurring = true', () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
       final templateId = await insertTemplate(db);
-      await insertTransactionForTemplate(db, templateId, date: DateTime(2025, 6, 1));
+      await insertTransactionForTemplate(db, templateId,
+          date: DateTime(2025, 6, 1));
 
-      final entries = await container.read(unifiedEntriesProvider(_range).future);
+      final entries =
+          await container.read(unifiedEntriesProvider(_range).future);
 
       expect(entries.length, 1);
       expect(entries.first.isRecurring, true);
       expect(entries.first.templateId, templateId);
     });
 
-    test(
-        'transaction from cancelled template → isRecurring = false',
-        () async {
+    test('transaction from cancelled template → isRecurring = false', () async {
       final container = makeContainer();
       final db = container.read(databaseProvider);
 
       final templateId = await insertTemplate(db);
-      await insertTransactionForTemplate(db, templateId, date: DateTime(2025, 6, 1));
+      await insertTransactionForTemplate(db, templateId,
+          date: DateTime(2025, 6, 1));
 
       // Cancel the template
-      await db.transactionDao.watchFilteredWithTemplateStatus(
-        start: DateTime(2024, 1, 1),
-        end: DateTime(2030, 1, 1),
-      ).first; // warm up stream
+      await db.transactionDao
+          .watchFilteredWithTemplateStatus(
+            start: DateTime(2024, 1, 1),
+            end: DateTime(2030, 1, 1),
+          )
+          .first; // warm up stream
       await (db.update(db.recurringTemplates)
             ..where((t) => t.id.equals(templateId)))
           .write(const RecurringTemplatesCompanion(isDeleted: Value(true)));
 
-      final entries = await container.read(unifiedEntriesProvider(_range).future);
+      final entries =
+          await container.read(unifiedEntriesProvider(_range).future);
 
       expect(entries.length, 1);
       expect(entries.first.isRecurring, false);
@@ -140,7 +142,8 @@ void main() {
       await insertOneOffTransaction(db, date: DateTime(2025, 6, 1));
       await insertOneOffTransaction(db, date: DateTime(2025, 1, 1));
 
-      final entries = await container.read(unifiedEntriesProvider(_range).future);
+      final entries =
+          await container.read(unifiedEntriesProvider(_range).future);
 
       expect(entries.length, 3);
       expect(entries[0].date, DateTime(2025, 6, 1));
@@ -153,10 +156,12 @@ void main() {
       final db = container.read(databaseProvider);
 
       final templateId = await insertTemplate(db);
-      await insertTransactionForTemplate(db, templateId, date: DateTime(2025, 6, 1));
+      await insertTransactionForTemplate(db, templateId,
+          date: DateTime(2025, 6, 1));
       await insertOneOffTransaction(db, date: DateTime(2025, 5, 1));
 
-      final entries = await container.read(unifiedEntriesProvider(_range).future);
+      final entries =
+          await container.read(unifiedEntriesProvider(_range).future);
 
       expect(entries.length, 2);
       final recurring = entries.firstWhere((e) => e.isRecurring);

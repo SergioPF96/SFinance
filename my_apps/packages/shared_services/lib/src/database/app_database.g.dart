@@ -1463,6 +1463,349 @@ class InitialCapitalTableCompanion extends UpdateCompanion<InitialCapitalRow> {
   }
 }
 
+class $QuickExpensesTable extends QuickExpenses
+    with TableInfo<$QuickExpensesTable, QuickExpenseRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuickExpensesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _amountCentsMeta =
+      const VerificationMeta('amountCents');
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+      'amount_cents', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _imagePathMeta =
+      const VerificationMeta('imagePath');
+  @override
+  late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
+      'image_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, amountCents, category, imagePath, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'quick_expenses';
+  @override
+  VerificationContext validateIntegrity(Insertable<QuickExpenseRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+          _amountCentsMeta,
+          amountCents.isAcceptableOrUnknown(
+              data['amount_cents']!, _amountCentsMeta));
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('image_path')) {
+      context.handle(_imagePathMeta,
+          imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuickExpenseRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuickExpenseRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      amountCents: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}amount_cents'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      imagePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}image_path']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $QuickExpensesTable createAlias(String alias) {
+    return $QuickExpensesTable(attachedDatabase, alias);
+  }
+}
+
+class QuickExpenseRow extends DataClass implements Insertable<QuickExpenseRow> {
+  final int id;
+  final String name;
+  final int amountCents;
+
+  /// ExpenseCategory enum name string (e.g. "producto", "suscripcion").
+  final String category;
+
+  /// Absolute internal-storage path. Null ⇒ show generic icon.
+  final String? imagePath;
+  final DateTime createdAt;
+  const QuickExpenseRow(
+      {required this.id,
+      required this.name,
+      required this.amountCents,
+      required this.category,
+      this.imagePath,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['amount_cents'] = Variable<int>(amountCents);
+    map['category'] = Variable<String>(category);
+    if (!nullToAbsent || imagePath != null) {
+      map['image_path'] = Variable<String>(imagePath);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  QuickExpensesCompanion toCompanion(bool nullToAbsent) {
+    return QuickExpensesCompanion(
+      id: Value(id),
+      name: Value(name),
+      amountCents: Value(amountCents),
+      category: Value(category),
+      imagePath: imagePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imagePath),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory QuickExpenseRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuickExpenseRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+      category: serializer.fromJson<String>(json['category']),
+      imagePath: serializer.fromJson<String?>(json['imagePath']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'amountCents': serializer.toJson<int>(amountCents),
+      'category': serializer.toJson<String>(category),
+      'imagePath': serializer.toJson<String?>(imagePath),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  QuickExpenseRow copyWith(
+          {int? id,
+          String? name,
+          int? amountCents,
+          String? category,
+          Value<String?> imagePath = const Value.absent(),
+          DateTime? createdAt}) =>
+      QuickExpenseRow(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        amountCents: amountCents ?? this.amountCents,
+        category: category ?? this.category,
+        imagePath: imagePath.present ? imagePath.value : this.imagePath,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  QuickExpenseRow copyWithCompanion(QuickExpensesCompanion data) {
+    return QuickExpenseRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      amountCents:
+          data.amountCents.present ? data.amountCents.value : this.amountCents,
+      category: data.category.present ? data.category.value : this.category,
+      imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuickExpenseRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('category: $category, ')
+          ..write('imagePath: $imagePath, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, amountCents, category, imagePath, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuickExpenseRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.amountCents == this.amountCents &&
+          other.category == this.category &&
+          other.imagePath == this.imagePath &&
+          other.createdAt == this.createdAt);
+}
+
+class QuickExpensesCompanion extends UpdateCompanion<QuickExpenseRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> amountCents;
+  final Value<String> category;
+  final Value<String?> imagePath;
+  final Value<DateTime> createdAt;
+  const QuickExpensesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.amountCents = const Value.absent(),
+    this.category = const Value.absent(),
+    this.imagePath = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  QuickExpensesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required int amountCents,
+    required String category,
+    this.imagePath = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  })  : name = Value(name),
+        amountCents = Value(amountCents),
+        category = Value(category);
+  static Insertable<QuickExpenseRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? amountCents,
+    Expression<String>? category,
+    Expression<String>? imagePath,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (category != null) 'category': category,
+      if (imagePath != null) 'image_path': imagePath,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  QuickExpensesCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? name,
+      Value<int>? amountCents,
+      Value<String>? category,
+      Value<String?>? imagePath,
+      Value<DateTime>? createdAt}) {
+    return QuickExpensesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      amountCents: amountCents ?? this.amountCents,
+      category: category ?? this.category,
+      imagePath: imagePath ?? this.imagePath,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (imagePath.present) {
+      map['image_path'] = Variable<String>(imagePath.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuickExpensesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('category: $category, ')
+          ..write('imagePath: $imagePath, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1471,17 +1814,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $InitialCapitalTableTable initialCapitalTable =
       $InitialCapitalTableTable(this);
+  late final $QuickExpensesTable quickExpenses = $QuickExpensesTable(this);
   late final TransactionDao transactionDao =
       TransactionDao(this as AppDatabase);
   late final TemplateDao templateDao = TemplateDao(this as AppDatabase);
   late final InitialCapitalDao initialCapitalDao =
       InitialCapitalDao(this as AppDatabase);
+  late final QuickExpenseDao quickExpenseDao =
+      QuickExpenseDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [recurringTemplates, transactions, initialCapitalTable];
+      [recurringTemplates, transactions, initialCapitalTable, quickExpenses];
 }
 
 typedef $$RecurringTemplatesTableCreateCompanionBuilder
@@ -2370,6 +2716,188 @@ typedef $$InitialCapitalTableTableProcessedTableManager = ProcessedTableManager<
     ),
     InitialCapitalRow,
     PrefetchHooks Function()>;
+typedef $$QuickExpensesTableCreateCompanionBuilder = QuickExpensesCompanion
+    Function({
+  Value<int> id,
+  required String name,
+  required int amountCents,
+  required String category,
+  Value<String?> imagePath,
+  Value<DateTime> createdAt,
+});
+typedef $$QuickExpensesTableUpdateCompanionBuilder = QuickExpensesCompanion
+    Function({
+  Value<int> id,
+  Value<String> name,
+  Value<int> amountCents,
+  Value<String> category,
+  Value<String?> imagePath,
+  Value<DateTime> createdAt,
+});
+
+class $$QuickExpensesTableFilterComposer
+    extends Composer<_$AppDatabase, $QuickExpensesTable> {
+  $$QuickExpensesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+      column: $table.amountCents, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get imagePath => $composableBuilder(
+      column: $table.imagePath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$QuickExpensesTableOrderingComposer
+    extends Composer<_$AppDatabase, $QuickExpensesTable> {
+  $$QuickExpensesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+      column: $table.amountCents, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get imagePath => $composableBuilder(
+      column: $table.imagePath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$QuickExpensesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $QuickExpensesTable> {
+  $$QuickExpensesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+      column: $table.amountCents, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get imagePath =>
+      $composableBuilder(column: $table.imagePath, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$QuickExpensesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $QuickExpensesTable,
+    QuickExpenseRow,
+    $$QuickExpensesTableFilterComposer,
+    $$QuickExpensesTableOrderingComposer,
+    $$QuickExpensesTableAnnotationComposer,
+    $$QuickExpensesTableCreateCompanionBuilder,
+    $$QuickExpensesTableUpdateCompanionBuilder,
+    (
+      QuickExpenseRow,
+      BaseReferences<_$AppDatabase, $QuickExpensesTable, QuickExpenseRow>
+    ),
+    QuickExpenseRow,
+    PrefetchHooks Function()> {
+  $$QuickExpensesTableTableManager(_$AppDatabase db, $QuickExpensesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuickExpensesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuickExpensesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuickExpensesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<int> amountCents = const Value.absent(),
+            Value<String> category = const Value.absent(),
+            Value<String?> imagePath = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              QuickExpensesCompanion(
+            id: id,
+            name: name,
+            amountCents: amountCents,
+            category: category,
+            imagePath: imagePath,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            required int amountCents,
+            required String category,
+            Value<String?> imagePath = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              QuickExpensesCompanion.insert(
+            id: id,
+            name: name,
+            amountCents: amountCents,
+            category: category,
+            imagePath: imagePath,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$QuickExpensesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $QuickExpensesTable,
+    QuickExpenseRow,
+    $$QuickExpensesTableFilterComposer,
+    $$QuickExpensesTableOrderingComposer,
+    $$QuickExpensesTableAnnotationComposer,
+    $$QuickExpensesTableCreateCompanionBuilder,
+    $$QuickExpensesTableUpdateCompanionBuilder,
+    (
+      QuickExpenseRow,
+      BaseReferences<_$AppDatabase, $QuickExpensesTable, QuickExpenseRow>
+    ),
+    QuickExpenseRow,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2380,4 +2908,6 @@ class $AppDatabaseManager {
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$InitialCapitalTableTableTableManager get initialCapitalTable =>
       $$InitialCapitalTableTableTableManager(_db, _db.initialCapitalTable);
+  $$QuickExpensesTableTableManager get quickExpenses =>
+      $$QuickExpensesTableTableManager(_db, _db.quickExpenses);
 }

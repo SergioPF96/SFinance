@@ -77,8 +77,7 @@ void main() {
       notifier.setPaymentDay(pastDay);
 
       final error = await notifier.submit();
-      expect(error, isNull,
-          reason: 'Salario 14p must not trigger FR-006');
+      expect(error, isNull, reason: 'Salario 14p must not trigger FR-006');
     });
   });
 

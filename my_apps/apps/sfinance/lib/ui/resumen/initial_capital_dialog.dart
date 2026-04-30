@@ -59,16 +59,21 @@ class _InitialCapitalDialogState extends ConsumerState<InitialCapitalDialog> {
       return;
     }
 
-    setState(() { _saving = true; _error = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
 
     try {
       final cents = (value * 100).round();
-      await ref
-          .read(initialCapitalProvider.notifier)
-          .setInitialCapital(cents);
+      await ref.read(initialCapitalProvider.notifier).setInitialCapital(cents);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) setState(() { _saving = false; _error = 'Error al guardar.'; });
+      if (mounted)
+        setState(() {
+          _saving = false;
+          _error = 'Error al guardar.';
+        });
     }
   }
 
@@ -150,28 +155,28 @@ class _InitialCapitalDialogState extends ConsumerState<InitialCapitalDialog> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                        color: AppColors.surfaceVariant),
+                    borderSide:
+                        const BorderSide(color: AppColors.surfaceVariant),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                        color: AppColors.surfaceVariant),
+                    borderSide:
+                        const BorderSide(color: AppColors.surfaceVariant),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                        color: AppColors.balance, width: 1.5),
+                    borderSide:
+                        const BorderSide(color: AppColors.balance, width: 1.5),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                        color: AppColors.expense, width: 1.5),
+                    borderSide:
+                        const BorderSide(color: AppColors.expense, width: 1.5),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                        color: AppColors.expense, width: 1.5),
+                    borderSide:
+                        const BorderSide(color: AppColors.expense, width: 1.5),
                   ),
                 ),
                 onSubmitted: (_) => _confirm(),

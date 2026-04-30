@@ -39,10 +39,8 @@ class _KpiNotifier extends AsyncNotifier<KpiState> {
   @override
   Future<KpiState> build() async {
     // Watching these stream providers triggers a rebuild on every DB change.
-    final transactions =
-        await ref.watch(allTransactionsStreamProvider.future);
-    final capitalRow =
-        await ref.watch(initialCapitalStreamProvider.future);
+    final transactions = await ref.watch(allTransactionsStreamProvider.future);
+    final capitalRow = await ref.watch(initialCapitalStreamProvider.future);
 
     return _compute(transactions, capitalRow);
   }

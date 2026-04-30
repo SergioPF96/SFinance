@@ -30,8 +30,7 @@ class CategoryFilterSelector extends StatelessWidget {
           selectedColor: AppColors.balance.withValues(alpha: 0.2),
           backgroundColor: AppColors.surfaceVariant,
           labelStyle: TextStyle(
-            color:
-                isSelected ? AppColors.balance : AppColors.onBackgroundMuted,
+            color: isSelected ? AppColors.balance : AppColors.onBackgroundMuted,
             fontSize: 12,
           ),
           side: BorderSide(

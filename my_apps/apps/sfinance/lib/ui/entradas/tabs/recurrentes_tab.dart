@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../providers/template_providers.dart';
-import 'template_detail_modal.dart';
+import '../../../providers/template_providers.dart';
+import '../../recurrentes/template_detail_modal.dart';
 
-/// Tab view listing all active recurring templates in compact rows.
-///
-/// Ordered by creation date ascending (oldest first).
-/// Tapping a row opens [TemplateDetailModal].
-class RecurrentesView extends ConsumerWidget {
-  const RecurrentesView({super.key});
+/// Recurring templates list — extracted from RecurrentesView.
+class RecurrentesTab extends ConsumerWidget {
+  const RecurrentesTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,10 +39,6 @@ class RecurrentesView extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Row widget
-// ---------------------------------------------------------------------------
-
 class _TemplateRow extends StatelessWidget {
   const _TemplateRow({required this.template});
 
@@ -71,7 +64,6 @@ class _TemplateRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         child: Row(
           children: [
-            // Name + category
             Expanded(
               flex: 3,
               child: Column(
@@ -95,7 +87,6 @@ class _TemplateRow extends StatelessWidget {
                 ],
               ),
             ),
-            // Amount
             Expanded(
               flex: 2,
               child: Text(
@@ -110,7 +101,6 @@ class _TemplateRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Next payment date
             Expanded(
               flex: 2,
               child: Text(
@@ -120,7 +110,6 @@ class _TemplateRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // End date
             Expanded(
               flex: 2,
               child: Text(
@@ -138,10 +127,6 @@ class _TemplateRow extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState();

@@ -74,21 +74,18 @@ TemplateDisplay _toDisplay(RecurringTemplateRow row) {
   // Category label
   String catLabel;
   if (row.transactionType == 'income') {
-    final cat = IncomeCategory.values
-        .where((c) => c.name == row.category)
-        .firstOrNull;
+    final cat =
+        IncomeCategory.values.where((c) => c.name == row.category).firstOrNull;
     catLabel = cat?.displayLabel ?? row.category;
   } else {
-    final cat = ExpenseCategory.values
-        .where((c) => c.name == row.category)
-        .firstOrNull;
+    final cat =
+        ExpenseCategory.values.where((c) => c.name == row.category).firstOrNull;
     catLabel = cat?.displayLabel ?? row.category;
   }
 
   // Periodicity label
-  final per = Periodicity.values
-      .where((p) => p.name == row.periodicity)
-      .firstOrNull;
+  final per =
+      Periodicity.values.where((p) => p.name == row.periodicity).firstOrNull;
   final perLabel = per?.displayLabel ?? row.periodicity;
 
   final effectiveDay = row.paymentDay ?? 1;
@@ -109,8 +106,7 @@ TemplateDisplay _toDisplay(RecurringTemplateRow row) {
 }
 
 /// All active (non-deleted) recurring templates, ordered by creation date asc.
-final activeTemplatesProvider =
-    StreamProvider<List<TemplateDisplay>>((ref) {
+final activeTemplatesProvider = StreamProvider<List<TemplateDisplay>>((ref) {
   return ref
       .watch(templateDaoProvider)
       .watchActive()

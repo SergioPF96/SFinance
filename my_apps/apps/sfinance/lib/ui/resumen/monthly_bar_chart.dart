@@ -16,8 +16,8 @@ class MonthlyBarChart extends ConsumerWidget {
     return dataAsync.when(
       loading: () => const SizedBox(
           height: 200, child: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Text('Error: $e',
-          style: const TextStyle(color: AppColors.expense)),
+      error: (e, _) =>
+          Text('Error: $e', style: const TextStyle(color: AppColors.expense)),
       data: (data) => _Chart(data: data),
     );
   }
@@ -31,14 +31,16 @@ class _Chart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxY = data.months.fold<double>(
-      1000,
-      (max, m) {
-        final monthMax =
-            [m.ingresosCents.toDouble(), m.gastosCents.toDouble()].reduce(
-                (a, b) => a > b ? a : b);
-        return monthMax > max ? monthMax : max;
-      },
-    ) * 1.2; // 20% headroom
+          1000,
+          (max, m) {
+            final monthMax = [
+              m.ingresosCents.toDouble(),
+              m.gastosCents.toDouble()
+            ].reduce((a, b) => a > b ? a : b);
+            return monthMax > max ? monthMax : max;
+          },
+        ) *
+        1.2; // 20% headroom
 
     final barGroups = data.months.asMap().entries.map((entry) {
       final i = entry.key;
@@ -111,12 +113,12 @@ class _Chart extends StatelessWidget {
                     },
                   ),
                 ),
-                leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
+                leftTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
               barTouchData: BarTouchData(
                 touchTooltipData: BarTouchTooltipData(

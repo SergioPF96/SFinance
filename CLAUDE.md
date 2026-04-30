@@ -1,4 +1,4 @@
-﻿# SFinance Development Guidelines
+# SFinance Development Guidelines
 
 ## Project
 
@@ -62,6 +62,8 @@ well-maintained over cutting-edge. No premature abstractions.
 - SQLite local vía Drift. Sin cambio de esquema (v3 se mantiene). (009-recurring-templates-view)
 - Dart 3.x — Flutter stable + flutter_riverpod, go_router, drift ^2.20.0, fl_chart, intl, shared_ui, shared_models, shared_services (010-entries-ux-fixes)
 - SQLite (Drift) local on-device — sin cambios de esquema (010-entries-ux-fixes)
+- Dart 3.x — Flutter stable channel + flutter_riverpod ^2.5.0, drift ^2.20.0, go_router ^14.0.0, intl ^0.19.0, path_provider ^2.1.0, path ^1.9.0, shared_models, shared_ui, shared_services. **NEW**: file_picker ^8.x (justified in Complexity Tracking). (011-quick-expenses)
+- SQLite via Drift, on-device only. Schema migration v3 → v4 (add `quick_expenses` table). Internal image files stored in `getApplicationDocumentsDirectory()/quick_expense_images/` (managed by `ImageStorageService`). (011-quick-expenses)
 
 - **Framework**: Flutter (stable channel)
 - **Language**: Dart

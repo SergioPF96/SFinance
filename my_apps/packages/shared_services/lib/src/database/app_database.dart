@@ -8,15 +8,17 @@ import 'dart:io';
 import 'tables/transactions.dart';
 import 'tables/recurring_templates.dart';
 import 'tables/initial_capital.dart';
+import 'tables/quick_expenses.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/template_dao.dart';
 import 'daos/initial_capital_dao.dart';
+import 'daos/quick_expense_dao.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Transactions, RecurringTemplates, InitialCapitalTable],
-  daos: [TransactionDao, TemplateDao, InitialCapitalDao],
+  tables: [Transactions, RecurringTemplates, InitialCapitalTable, QuickExpenses],
+  daos: [TransactionDao, TemplateDao, InitialCapitalDao, QuickExpenseDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -24,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -74,6 +76,9 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('DROP TABLE recurring_templates');
           await customStatement(
               'ALTER TABLE recurring_templates_new RENAME TO recurring_templates');
+        }
+        if (from < 4) {
+          await migrator.createTable(quickExpenses);
         }
       },
     );

@@ -9,3 +9,4 @@ export 'src/enums/pay_frequency.dart';
 export 'src/transaction.dart';
 export 'src/recurring_template.dart';
 export 'src/initial_capital.dart';
+export 'src/quick_expense.dart';

@@ -43,7 +43,8 @@ void main() {
       for (final range in [500.0, 1500.0, 10000.0, 100000.0]) {
         final interval = niceInterval(range);
         final count = range / interval;
-        expect(count, greaterThan(1), reason: 'range=$range interval=$interval');
+        expect(count, greaterThan(1),
+            reason: 'range=$range interval=$interval');
         expect(count, lessThan(10), reason: 'range=$range interval=$interval');
       }
     });
