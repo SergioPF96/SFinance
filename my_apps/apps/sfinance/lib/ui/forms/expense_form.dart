@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../providers/form_providers.dart';
+import '../../providers/quick_expenses_provider.dart';
+import '../entradas/quick_expense_edit_dialog.dart';
+import 'quick_expense_card_row.dart';
 
 /// Expense entry modal form ("+ Gasto").
 ///
@@ -16,6 +19,8 @@ class ExpenseForm extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(expenseFormProvider);
     final notifier = ref.read(expenseFormProvider.notifier);
+    final quickExpenses =
+        ref.watch(quickExpensesStreamProvider).valueOrNull ?? [];
 
     return Dialog(
       backgroundColor: AppColors.surface,
@@ -40,7 +45,8 @@ class ExpenseForm extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.onBackgroundMuted),
+                    icon: const Icon(Icons.close,
+                        color: AppColors.onBackgroundMuted),
                     onPressed: () => context.pop(),
                     tooltip: 'Cerrar',
                   ),
@@ -48,21 +54,33 @@ class ExpenseForm extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
+              // Quick expense shortcuts
+              if (quickExpenses.isNotEmpty) ...[
+                QuickExpenseCardRow(
+                  items: quickExpenses,
+                  onSelected: notifier.prefillFromQuickExpense,
+                ),
+                const SizedBox(height: 12),
+              ],
+
               // Nombre
               _FormField(
                 label: 'Nombre',
                 autofocus: true,
                 onChanged: notifier.setNombre,
                 value: state.nombre,
+                errorText: state.nombreError,
               ),
               const SizedBox(height: 12),
 
               // Monto
               _FormField(
                 label: 'Importe (€)',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 onChanged: notifier.setMonto,
                 value: state.monto,
+                errorText: state.montoError,
               ),
               const SizedBox(height: 12),
 
@@ -140,7 +158,8 @@ class ExpenseForm extends ConsumerWidget {
                 const SizedBox(height: 12),
                 Text(
                   state.errorMessage!,
-                  style: const TextStyle(color: AppColors.expense, fontSize: 13),
+                  style:
+                      const TextStyle(color: AppColors.expense, fontSize: 13),
                 ),
               ],
 
@@ -150,6 +169,46 @@ class ExpenseForm extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // Only shown for Producto / Servicio (not for recurring categories)
+                  if (state.canSaveAsQuickExpense) ...[
+                    TextButton(
+                      onPressed: () async {
+                        // Inline validation before opening dialog
+                        String? nombreErr;
+                        String? montoErr;
+                        if (state.nombre.trim().isEmpty) {
+                          nombreErr = 'El nombre es obligatorio';
+                        }
+                        final parsed = double.tryParse(
+                            state.monto.replaceAll(',', '.'));
+                        if (parsed == null || parsed <= 0) {
+                          montoErr = 'Introduce un importe válido';
+                        }
+                        if (nombreErr != null || montoErr != null) {
+                          notifier.setNombreError(nombreErr);
+                          notifier.setMontoError(montoErr);
+                          return;
+                        }
+                        notifier.setNombreError(null);
+                        notifier.setMontoError(null);
+
+                        await showDialog<bool>(
+                          context: context,
+                          builder: (_) => QuickExpenseEditDialog(
+                            id: null,
+                            initialName: state.nombre,
+                            initialAmount: state.monto,
+                            initialCategory: state.categoria,
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Guardar como gasto común',
+                        style: TextStyle(color: AppColors.onBackgroundMuted),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   TextButton(
                     onPressed: () => context.pop(),
                     child: const Text(
@@ -199,6 +258,7 @@ class _FormField extends StatelessWidget {
     required this.value,
     this.keyboardType,
     this.autofocus = false,
+    this.errorText,
   });
 
   final String label;
@@ -206,6 +266,7 @@ class _FormField extends StatelessWidget {
   final String value;
   final TextInputType? keyboardType;
   final bool autofocus;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +274,11 @@ class _FormField extends StatelessWidget {
       autofocus: autofocus,
       keyboardType: keyboardType,
       style: const TextStyle(color: AppColors.onBackground),
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        errorText: errorText,
+        errorStyle: const TextStyle(color: AppColors.expense, fontSize: 12),
+      ),
       onChanged: onChanged,
       controller: TextEditingController(text: value)
         ..selection = TextSelection.collapsed(offset: value.length),
@@ -333,8 +398,19 @@ class _FechaFinPicker extends StatelessWidget {
 
   String _monthName(int month) {
     const names = [
-      '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      '',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     return names[month];
   }
@@ -342,7 +418,8 @@ class _FechaFinPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
-      icon: const Icon(Icons.calendar_today, color: AppColors.onBackgroundMuted, size: 16),
+      icon: const Icon(Icons.calendar_today,
+          color: AppColors.onBackgroundMuted, size: 16),
       label: Text(
         _label,
         style: const TextStyle(color: AppColors.onBackground),

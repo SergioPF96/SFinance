@@ -84,14 +84,17 @@ TransactionDisplay _toDisplay(
 
   String label;
   if (isIncome) {
-    final cat = IncomeCategory.values.where((c) => c.name == row.category).firstOrNull;
+    final cat =
+        IncomeCategory.values.where((c) => c.name == row.category).firstOrNull;
     label = cat?.displayLabel ?? row.category;
   } else {
-    final cat = ExpenseCategory.values.where((c) => c.name == row.category).firstOrNull;
+    final cat =
+        ExpenseCategory.values.where((c) => c.name == row.category).firstOrNull;
     label = cat?.displayLabel ?? row.category;
   }
 
-  final isActiveRecurring = row.templateId != null && templateIsDeleted == false;
+  final isActiveRecurring =
+      row.templateId != null && templateIsDeleted == false;
 
   return TransactionDisplay(
     id: row.id,
@@ -105,7 +108,8 @@ TransactionDisplay _toDisplay(
     isRecurring: isActiveRecurring,
     templateId: row.templateId,
     recurringDetail: isActiveRecurring
-        ? _recurringDetail(templatePaymentDay, templatePeriodicity, row.date.month)
+        ? _recurringDetail(
+            templatePaymentDay, templatePeriodicity, row.date.month)
         : null,
   );
 }

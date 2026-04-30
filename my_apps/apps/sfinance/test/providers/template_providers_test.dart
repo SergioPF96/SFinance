@@ -12,7 +12,9 @@ void main() {
       expect(result, DateTime(2026, 4, 15));
     });
 
-    test('paymentDay == today.day → same month, same day (today is payment day)', () {
+    test(
+        'paymentDay == today.day → same month, same day (today is payment day)',
+        () {
       final today = DateTime(2026, 4, 15); // day 15
       final result = computeNextPaymentDate(15, today);
       expect(result, DateTime(2026, 4, 15));
@@ -24,7 +26,9 @@ void main() {
       expect(result, DateTime(2026, 5, 15));
     });
 
-    test('paymentDay > days in destination month → clamped to last day of month', () {
+    test(
+        'paymentDay > days in destination month → clamped to last day of month',
+        () {
       // paymentDay=31, next month is February (28 days in 2026)
       final today = DateTime(2026, 1, 31); // day 31, Jan
       final result = computeNextPaymentDate(31, today);
@@ -32,7 +36,8 @@ void main() {
       expect(result, DateTime(2026, 1, 31));
     });
 
-    test('paymentDay > days in next month → clamped to last day of next month', () {
+    test('paymentDay > days in next month → clamped to last day of next month',
+        () {
       // paymentDay=31, today is Feb 5, next occurrence is Feb 28 (2026 is not a leap year)
       final today = DateTime(2026, 2, 5);
       final result = computeNextPaymentDate(31, today);

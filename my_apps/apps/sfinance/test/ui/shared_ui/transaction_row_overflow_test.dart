@@ -31,8 +31,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('recurringDetail appears in the subtitle text',
-        (tester) async {
+    testWidgets('recurringDetail appears in the subtitle text', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

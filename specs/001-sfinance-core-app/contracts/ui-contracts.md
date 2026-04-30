@@ -209,13 +209,13 @@ cancelLabel: String         // e.g., "Cancelar"
 
 **Output**: `bool` (confirmed or cancelled)
 
-### Initial Capital Editor (Resumen Balance card)
+### Initial Capital Dialog (first-launch modal)
 
-**Visibility**: Only when `hasTransactions == false` and `initialCapitalActive == true` (or no InitialCapital row exists yet).
+**Visibility**: Shown as a non-dismissable modal (`barrierDismissible: false`) on the first frame after Resumen loads, when `hasTransactions == false` AND `initialCapitalProvider.isActive == false` (i.e. no capital has been set yet). Once the user confirms, `isActive` becomes `true` and the dialog never reopens.
 
-**Input**: amount field (same format/validation as monto in transaction forms)
+**Input**: Euro amount field with `EuroAmountFormatter` — thousands dots as display-only separators, comma as decimal separator (`.` also accepted and echoed as `,`), max 2 decimal places.
 
-**Submission output**: `int` (amountCents)
+**Submission output**: `int` (amountCents); on success calls `Navigator.of(context).pop()`.
 
 ---
 

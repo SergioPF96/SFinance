@@ -140,8 +140,7 @@ class IncomeForm extends ConsumerWidget {
                       onPressed: () => context.pop(),
                       child: const Text(
                         'Cancelar',
-                        style:
-                            TextStyle(color: AppColors.onBackgroundMuted),
+                        style: TextStyle(color: AppColors.onBackgroundMuted),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -289,8 +288,19 @@ class _MonthPicker extends StatelessWidget {
   final int? exclude;
 
   static const _months = [
-    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    '',
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
 
   @override

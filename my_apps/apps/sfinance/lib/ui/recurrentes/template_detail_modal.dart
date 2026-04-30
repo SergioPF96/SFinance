@@ -25,8 +25,9 @@ class TemplateDetailModal extends ConsumerWidget {
     // Always use the latest snapshot from the stream so the modal reflects
     // DB changes (e.g. after editing the amount) without needing to reopen.
     final liveTemplates = ref.watch(activeTemplatesProvider).valueOrNull;
-    final current = liveTemplates?.where((t) => t.id == template.id).firstOrNull
-        ?? template;
+    final current =
+        liveTemplates?.where((t) => t.id == template.id).firstOrNull ??
+            template;
 
     return Dialog(
       backgroundColor: AppColors.surface,
@@ -149,8 +150,7 @@ class TemplateDetailModal extends ConsumerWidget {
                       borderSide: BorderSide(color: AppColors.balance),
                     ),
                     errorText: state.amountError,
-                    errorStyle:
-                        const TextStyle(color: AppColors.danger),
+                    errorStyle: const TextStyle(color: AppColors.danger),
                   ),
                   onChanged: notifier.setAmountText,
                 ),
@@ -205,8 +205,8 @@ class TemplateDetailModal extends ConsumerWidget {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => _confirmDelete(context, ref, dao),
-                  style: TextButton.styleFrom(
-                      foregroundColor: AppColors.danger),
+                  style:
+                      TextButton.styleFrom(foregroundColor: AppColors.danger),
                   child: const Text('Eliminar template'),
                 ),
               ),
@@ -225,8 +225,7 @@ class TemplateDetailModal extends ConsumerWidget {
     final confirmed = await showConfirmationDialog(
       context: context,
       title: '¿Eliminar este template?',
-      message:
-          'No se generarán más entradas para "${template.name}". '
+      message: 'No se generarán más entradas para "${template.name}". '
           'Las entradas ya registradas se conservan en tu historial.',
       confirmLabel: 'Eliminar',
       cancelLabel: 'Cancelar',

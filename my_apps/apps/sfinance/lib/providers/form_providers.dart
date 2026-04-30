@@ -22,6 +22,8 @@ class ExpenseFormState {
     this.openEnded = false,
     this.isSubmitting = false,
     this.errorMessage,
+    this.nombreError,
+    this.montoError,
   });
 
   final String nombre;
@@ -41,9 +43,18 @@ class ExpenseFormState {
   final bool isSubmitting;
   final String? errorMessage;
 
+  /// Inline validation errors shown below the respective field.
+  final String? nombreError;
+  final String? montoError;
+
   bool get isRecurring =>
       categoria == ExpenseCategory.suscripcion ||
       categoria == ExpenseCategory.financiacion;
+
+  /// True when categoria allows saving as a quick expense shortcut.
+  bool get canSaveAsQuickExpense =>
+      categoria == ExpenseCategory.producto ||
+      categoria == ExpenseCategory.servicio;
 
   ExpenseFormState copyWith({
     String? nombre,
@@ -56,6 +67,8 @@ class ExpenseFormState {
     bool? openEnded,
     bool? isSubmitting,
     Object? errorMessage = _sentinel,
+    Object? nombreError = _sentinel,
+    Object? montoError = _sentinel,
   }) {
     return ExpenseFormState(
       nombre: nombre ?? this.nombre,
@@ -73,6 +86,10 @@ class ExpenseFormState {
       errorMessage: errorMessage == _sentinel
           ? this.errorMessage
           : errorMessage as String?,
+      nombreError:
+          nombreError == _sentinel ? this.nombreError : nombreError as String?,
+      montoError:
+          montoError == _sentinel ? this.montoError : montoError as String?,
     );
   }
 }
@@ -84,8 +101,12 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
   @override
   ExpenseFormState build() => const ExpenseFormState();
 
-  void setNombre(String v) => state = state.copyWith(nombre: v);
-  void setMonto(String v) => state = state.copyWith(monto: v);
+  void setNombre(String v) =>
+      state = state.copyWith(nombre: v, nombreError: null);
+  void setMonto(String v) =>
+      state = state.copyWith(monto: v, montoError: null);
+  void setNombreError(String? v) => state = state.copyWith(nombreError: v);
+  void setMontoError(String? v) => state = state.copyWith(montoError: v);
   void setDescripcion(String v) => state = state.copyWith(descripcion: v);
 
   void setCategoria(ExpenseCategory? v) {
@@ -114,6 +135,17 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
   }
 
   void setPaymentDay(int? v) => state = state.copyWith(paymentDay: v);
+
+  /// Pre-fills name, amount, and category from a saved quick expense shortcut.
+  void prefillFromQuickExpense(QuickExpenseRow row) {
+    final amount =
+        (row.amountCents / 100).toStringAsFixed(2).replaceAll('.', ',');
+    state = state.copyWith(
+      nombre: row.name,
+      monto: amount,
+      categoria: ExpenseCategory.values.byName(row.category),
+    );
+  }
 
   /// Toggles "Sin fecha de fin" mode. When [v] is true, clears fechaFin.
   /// When [v] is false, fechaFin remains null (user must select a date again).
@@ -183,8 +215,7 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
           // first eligible month is next month; otherwise it is this month.
           // PeriodGenerator's date-level filter then decides whether to
           // generate the entry immediately (paymentDay == today) or defer it.
-          final daysThisMonth =
-              DateTime(today.year, today.month + 1, 0).day;
+          final daysThisMonth = DateTime(today.year, today.month + 1, 0).day;
           final clampedDay = paymentDay.clamp(1, daysThisMonth);
           final DateTime startDate;
           if (clampedDay < today.day) {
@@ -263,9 +294,8 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
             transactionType: 'expense',
             category: s.categoria!.name,
             date: today,
-            description: Value(s.descripcion.trim().isEmpty
-                ? null
-                : s.descripcion.trim()),
+            description: Value(
+                s.descripcion.trim().isEmpty ? null : s.descripcion.trim()),
           ),
         );
       }
@@ -458,10 +488,8 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
             startDate: startDate,
             endDate: Value(farFuture),
             payFrequency: Value(s.numeroPagas!.name),
-            extraPayMonth1: Value(
-                s.isCatorcepagas ? s.primeraPagaExtra : null),
-            extraPayMonth2: Value(
-                s.isCatorcepagas ? s.segundaPagaExtra : null),
+            extraPayMonth1: Value(s.isCatorcepagas ? s.primeraPagaExtra : null),
+            extraPayMonth2: Value(s.isCatorcepagas ? s.segundaPagaExtra : null),
             paymentDay: Value(paymentDay),
           ),
         );
@@ -485,9 +513,8 @@ class IncomeFormNotifier extends Notifier<IncomeFormState> {
             transactionType: 'income',
             category: s.categoria!.name,
             date: today,
-            description: Value(s.descripcion.trim().isEmpty
-                ? null
-                : s.descripcion.trim()),
+            description: Value(
+                s.descripcion.trim().isEmpty ? null : s.descripcion.trim()),
           ),
         );
       }

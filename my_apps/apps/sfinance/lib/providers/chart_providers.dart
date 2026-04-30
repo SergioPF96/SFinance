@@ -29,8 +29,19 @@ class MonthlyChartData {
 class _MonthlyChartNotifier
     extends AutoDisposeFamilyAsyncNotifier<MonthlyChartData, DateTime?> {
   static const _spanishMonths = [
-    '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    '',
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
   ];
 
   @override
@@ -79,9 +90,8 @@ class _MonthlyChartNotifier
 
 /// Family arg is [DateTime?] so tests can inject a fixed "today".
 /// In production, pass null to use DateTime.now().
-final monthlyChartProvider =
-    AsyncNotifierProvider.autoDispose.family<_MonthlyChartNotifier,
-        MonthlyChartData, DateTime?>(
+final monthlyChartProvider = AsyncNotifierProvider.autoDispose
+    .family<_MonthlyChartNotifier, MonthlyChartData, DateTime?>(
   _MonthlyChartNotifier.new,
 );
 
@@ -157,8 +167,8 @@ class AnalysisChartParam {
   int get hashCode => Object.hash(chartType, start, end);
 }
 
-class _AnalysisChartNotifier
-    extends AutoDisposeFamilyAsyncNotifier<List<DataPoint>, AnalysisChartParam> {
+class _AnalysisChartNotifier extends AutoDisposeFamilyAsyncNotifier<
+    List<DataPoint>, AnalysisChartParam> {
   @override
   Future<List<DataPoint>> build(AnalysisChartParam arg) async {
     final allTx = await ref.watch(allTransactionsStreamProvider.future);
@@ -192,9 +202,9 @@ class _AnalysisChartNotifier
     }
 
     return (byDay.entries
-            .map((e) => DataPoint(date: e.key, valueCents: e.value))
-            .toList()
-          ..sort((a, b) => a.date.compareTo(b.date)));
+        .map((e) => DataPoint(date: e.key, valueCents: e.value))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date)));
   }
 
   List<DataPoint> _computeBalance(
@@ -206,9 +216,8 @@ class _AnalysisChartNotifier
     int running = 0;
     for (final tx in sorted) {
       if (tx.date.isBefore(rangeStart)) {
-        running += tx.transactionType == 'income'
-            ? tx.amountCents
-            : -tx.amountCents;
+        running +=
+            tx.transactionType == 'income' ? tx.amountCents : -tx.amountCents;
       }
     }
 
@@ -219,9 +228,8 @@ class _AnalysisChartNotifier
         continue;
       }
       final day = DateTime(tx.date.year, tx.date.month, tx.date.day);
-      final delta = tx.transactionType == 'income'
-          ? tx.amountCents
-          : -tx.amountCents;
+      final delta =
+          tx.transactionType == 'income' ? tx.amountCents : -tx.amountCents;
       byDay[day] = (byDay[day] ?? 0) + delta;
     }
 
@@ -235,8 +243,7 @@ class _AnalysisChartNotifier
   }
 }
 
-final analysisChartProvider =
-    AsyncNotifierProvider.autoDispose.family<_AnalysisChartNotifier,
-        List<DataPoint>, AnalysisChartParam>(
+final analysisChartProvider = AsyncNotifierProvider.autoDispose
+    .family<_AnalysisChartNotifier, List<DataPoint>, AnalysisChartParam>(
   _AnalysisChartNotifier.new,
 );

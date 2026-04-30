@@ -148,8 +148,7 @@ void main() {
       return notifier.submit();
     }
 
-    test(
-        'paymentDay already past, fechaFin=today → reject with FR-006 error',
+    test('paymentDay already past, fechaFin=today → reject with FR-006 error',
         () async {
       // paymentDay is set to a day that has already passed (today - 1, or 28
       // on the 1st to avoid being today). fechaFin = today, so the deferred
@@ -259,7 +258,8 @@ void main() {
           reason: 'endDate must be null for open-ended template');
     });
 
-    test('FR-006 validation is skipped for open-ended (paymentDay past, no endDate)',
+    test(
+        'FR-006 validation is skipped for open-ended (paymentDay past, no endDate)',
         () async {
       final container = makeContainer();
       final today = DateTime.now();

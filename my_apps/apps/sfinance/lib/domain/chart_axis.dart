@@ -9,7 +9,13 @@ double niceInterval(double range) {
   final rough = range / 4;
   final mag = math.pow(10, (math.log(rough) / math.ln10).floor()).toDouble();
   final norm = rough / mag;
-  final nice = norm < 1.5 ? 1.0 : norm < 3 ? 2.0 : norm < 7 ? 5.0 : 10.0;
+  final nice = norm < 1.5
+      ? 1.0
+      : norm < 3
+          ? 2.0
+          : norm < 7
+              ? 5.0
+              : 10.0;
   return nice * mag;
 }
 

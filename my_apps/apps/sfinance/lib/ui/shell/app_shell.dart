@@ -16,7 +16,6 @@ class AppShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/analisis')) return 1;
     if (location.startsWith('/entradas')) return 2;
-    if (location.startsWith('/recurrentes')) return 3;
     return 0; // /resumen (default)
   }
 
@@ -47,12 +46,6 @@ class AppShell extends StatelessWidget {
               label: 'Entradas',
               selected: currentIndex == 2,
               onTap: () => context.go('/entradas'),
-            ),
-            const SizedBox(width: 8),
-            _NavTab(
-              label: 'Recurrentes',
-              selected: currentIndex == 3,
-              onTap: () => context.go('/recurrentes'),
             ),
           ],
         ),

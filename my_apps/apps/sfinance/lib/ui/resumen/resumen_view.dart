@@ -118,8 +118,8 @@ class _RecentTransactions extends ConsumerWidget {
         const SizedBox(height: 12),
         recentAsync.when(
           loading: () => const LinearProgressIndicator(),
-          error: (e, _) =>
-              Text('Error: $e', style: const TextStyle(color: AppColors.expense)),
+          error: (e, _) => Text('Error: $e',
+              style: const TextStyle(color: AppColors.expense)),
           data: (transactions) {
             if (transactions.isEmpty) {
               return const Padding(

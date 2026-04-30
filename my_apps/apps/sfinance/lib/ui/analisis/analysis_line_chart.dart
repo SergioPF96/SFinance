@@ -31,8 +31,7 @@ class AnalysisLineChart extends StatelessWidget {
         child: Center(
           child: Text(
             'Sin datos para el período seleccionado',
-            style: TextStyle(
-                color: AppColors.onBackgroundMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.onBackgroundMuted, fontSize: 13),
           ),
         ),
       );
@@ -111,16 +110,15 @@ class AnalysisLineChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 22,
-                interval: math
-                    .max(1, (dataPoints.length / 5).ceil())
-                    .toDouble(),
+                interval:
+                    math.max(1, (dataPoints.length / 5).ceil()).toDouble(),
                 getTitlesWidget: (value, meta) {
                   final idx = value.toInt();
                   if (idx < 0 || idx >= dataPoints.length) {
                     return const SizedBox.shrink();
                   }
-                  final label = DateFormat('d MMM', 'es')
-                      .format(dataPoints[idx].date);
+                  final label =
+                      DateFormat('d MMM', 'es').format(dataPoints[idx].date);
                   return Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(

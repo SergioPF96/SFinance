@@ -92,9 +92,8 @@ class _KpiStrip extends ConsumerWidget {
             child: KpiCard(
               label: 'Balance',
               amountCents: kpi.balanceCents.abs(),
-              color: kpi.balanceCents >= 0
-                  ? AppColors.balance
-                  : AppColors.expense,
+              color:
+                  kpi.balanceCents >= 0 ? AppColors.balance : AppColors.expense,
               isIncome: kpi.balanceCents >= 0,
               showSign: kpi.balanceCents != 0,
             ),

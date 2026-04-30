@@ -85,7 +85,7 @@ The user opens the app and immediately sees their financial health at a glance: 
 2. **Given** transactions exist for the current month, **When** viewing the Ingresos and Gastos KPI cards, **Then** they show only the current calendar month totals, formatted as "+€X,XX" and "−€X,XX" respectively.
 3. **Given** transactions exist across multiple months, **When** viewing the "Resumen Mensual" chart, **Then** a grouped bar chart shows income (green) vs. expenses (red) for each of the recent months.
 4. **Given** transactions exist, **When** viewing "Transacciones Recientes", **Then** each row shows a colored icon, transaction name, category and date, and signed amount; the list is ordered most recent first.
-5. **Given** no transactions have been recorded yet, **When** viewing the Balance KPI card, **Then** it shows an editable field for entering initial capital; once entered and confirmed, the balance reflects that initial capital amount.
+5. **Given** no transactions have been recorded yet and no initial capital has been set, **When** the Resumen view loads, **Then** a non-dismissable modal dialog appears asking for the current balance; once confirmed, the dialog closes and the Balance KPI reflects the entered amount.
 6. **Given** initial capital was set but no transactions saved, **When** the first transaction is saved, **Then** the initial capital is discarded and the balance is computed solely from transactions.
 
 ---
@@ -145,13 +145,13 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 
 ### Edge Cases
 
-- What happens when there are no transactions yet? → All KPI values display as €0,00; charts show empty state; Resumen shows the editable initial capital Balance field.
+- What happens when there are no transactions yet and no initial capital set? → All KPI values display as €0,00; charts show empty state; a non-dismissable modal dialog prompts the user to enter their starting balance.
 - What happens when a recurring entry's end date is in the past and all occurrences have already been generated? → No new entries are generated; existing entries remain.
 - What happens when a 14-paga salary selects the same month for both extra payments? → The form must prevent this; the two month pickers must enforce distinct selections.
 - What happens when Monto is entered as zero? → The form must reject zero amounts; amounts must be strictly positive.
 - How does the system handle a Financiación end date set in the past (before today)? → Since start date is always today and end date must be provided, the system should prevent saving a template with an end date earlier than today; the Fecha de fin picker MUST only allow future dates.
 - What happens when the Balance KPI would be negative (lifetime expenses exceed income)? → The balance displays with an explicit "−" sign in red; the negative state is never hidden.
-- What happens when the app is launched for the first time with no data? → Resumen shows zero KPIs and an empty chart; the Balance card is editable for initial capital.
+- What happens when the app is launched for the first time with no data? → Resumen shows zero KPIs and an empty chart; a non-dismissable modal dialog asks the user to set their starting balance before they can use the app.
 - What happens when the user deletes a transaction that was auto-generated from a recurring template? → The individual entry is deleted; the template is unaffected and will continue generating future entries on subsequent app launches.
 - What happens when the user attempts to edit a saved transaction? → No editing affordance is provided; transactions are immutable after creation.
 - What happens when the user cancels the delete confirmation dialog? → The deletion is aborted; the transaction or template remains unchanged.
@@ -192,7 +192,7 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 #### Resumen View
 
 - **FR-017**: The Resumen view (default on launch) MUST display a KPI strip with three cards: Ingresos (current month total income, green), Gastos (current month total expenses, red), and Balance (all-time income minus all-time expenses, accent color).
-- **FR-018**: The Balance KPI card MUST be editable before any transaction is recorded; the user can enter an initial capital amount that is added to the computed balance and persisted.
+- **FR-018**: On first launch (no transactions recorded, no initial capital set), the app MUST present a non-dismissable modal dialog prompting the user to enter their starting balance; the dialog must be confirmed before the app is usable. The entered amount is persisted as initial capital and added to the computed balance.
 - **FR-019**: The initial capital MUST be automatically discarded the moment the first transaction is saved; it cannot be restored or edited after that point.
 - **FR-020**: The Resumen view MUST display a "Resumen Mensual" grouped bar chart showing income (green) vs. expenses (red) per month for the most recent months.
 - **FR-021**: The Resumen view MUST display a "Transacciones Recientes" list showing the most recent transactions, each row with a colored icon, name, category + date, and signed amount, ordered most recent first.

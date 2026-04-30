@@ -16,6 +16,14 @@ final initialCapitalDaoProvider = Provider<InitialCapitalDao>((ref) {
   return ref.watch(databaseProvider).initialCapitalDao;
 });
 
+final quickExpenseDaoProvider = Provider<QuickExpenseDao>((ref) {
+  return ref.watch(databaseProvider).quickExpenseDao;
+});
+
+final imageStorageServiceProvider = Provider<ImageStorageService>((ref) {
+  return ImageStorageService();
+});
+
 /// Internal stream providers — re-emit whenever the underlying DB table changes.
 
 final allTransactionsStreamProvider =
@@ -23,7 +31,6 @@ final allTransactionsStreamProvider =
   return ref.watch(transactionDaoProvider).watchAll();
 });
 
-final initialCapitalStreamProvider =
-    StreamProvider<InitialCapitalRow?>((ref) {
+final initialCapitalStreamProvider = StreamProvider<InitialCapitalRow?>((ref) {
   return ref.watch(initialCapitalDaoProvider).watch();
 });
