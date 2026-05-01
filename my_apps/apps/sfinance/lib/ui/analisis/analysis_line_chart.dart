@@ -100,7 +100,8 @@ class _AnalysisLineChartState extends State<AnalysisLineChart> {
       children: [
         if (isSparse) const _SparseNotice(),
         if (isSparse) const SizedBox(height: 8),
-        SizedBox(
+        LayoutBuilder(
+          builder: (context, constraints) => SizedBox(
           height: _chartHeight,
           child: Stack(
             children: [
@@ -263,8 +264,12 @@ class _AnalysisLineChartState extends State<AnalysisLineChart> {
 
               // ── End label overlay ─────────────────────────────────────────
               // Only shown when the last point is not currently touched.
+              // NOTE: _EndLabel must be a direct Stack child (no RenderObject
+              // widget in between) so that its Positioned return value can
+              // apply StackParentData correctly.
               if (_touchedIndex != dataPoints.length - 1)
                 _EndLabel(
+                  containerWidth: constraints.maxWidth,
                   dataPoints: dataPoints,
                   effectiveMin: effectiveMin,
                   effectiveMax: effectiveMax,
@@ -277,6 +282,7 @@ class _AnalysisLineChartState extends State<AnalysisLineChart> {
                 ),
             ],
           ),
+        ),
         ),
       ],
     );
@@ -291,6 +297,7 @@ class _AnalysisLineChartState extends State<AnalysisLineChart> {
 // line.
 class _EndLabel extends StatelessWidget {
   const _EndLabel({
+    required this.containerWidth,
     required this.dataPoints,
     required this.effectiveMin,
     required this.effectiveMax,
@@ -300,6 +307,10 @@ class _EndLabel extends StatelessWidget {
     required this.bottomReservedSize,
   });
 
+  /// Width of the containing Stack, passed in so this widget can return a
+  /// Positioned directly (no LayoutBuilder wrapper) — required for Positioned
+  /// to correctly apply StackParentData to RenderStack.
+  final double containerWidth;
   final List<DataPoint> dataPoints;
   final double effectiveMin;
   final double effectiveMax;
@@ -310,60 +321,58 @@ class _EndLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final plotW = constraints.maxWidth - leftReservedSize;
-      final plotH = chartHeight - bottomReservedSize;
+    final plotW = containerWidth - leftReservedSize;
+    final plotH = chartHeight - bottomReservedSize;
 
-      final last = dataPoints.last;
-      final range = (effectiveMax - effectiveMin).abs();
+    final last = dataPoints.last;
+    final range = (effectiveMax - effectiveMin).abs();
 
-      // X: last point is always at the far right of the plot area.
-      final dotX = leftReservedSize + plotW;
+    // X: last point is always at the far right of the plot area.
+    final dotX = leftReservedSize + plotW;
 
-      // Y: map value into plot area (fl_chart origin is top-left).
-      final normalised =
-          ((last.valueCents.toDouble() - effectiveMin) / range).clamp(0.0, 1.0);
-      final dotY = plotH * (1.0 - normalised);
+    // Y: map value into plot area (fl_chart origin is top-left).
+    final normalised =
+        ((last.valueCents.toDouble() - effectiveMin) / range).clamp(0.0, 1.0);
+    final dotY = plotH * (1.0 - normalised);
 
-      final labelText = formatAxisLabel(last.valueCents.toDouble());
+    final labelText = formatAxisLabel(last.valueCents.toDouble());
 
-      // Determine whether to float above or below the dot.
-      final above = dotY > plotH / 2;
-      const pillH = 24.0;
-      const pillPadH = 10.0; // gap between dot and pill
+    // Determine whether to float above or below the dot.
+    final above = dotY > plotH / 2;
+    const pillH = 24.0;
+    const pillPadH = 10.0; // gap between dot and pill
 
-      final top = above
-          ? (dotY - pillH - pillPadH).clamp(0.0, plotH - pillH)
-          : (dotY + pillPadH).clamp(0.0, plotH - pillH);
+    final top = above
+        ? (dotY - pillH - pillPadH).clamp(0.0, plotH - pillH)
+        : (dotY + pillPadH).clamp(0.0, plotH - pillH);
 
-      // Keep pill within horizontal bounds (allow it to drift left of dot).
-      const pillW = 80.0;
-      final left =
-          (dotX - pillW / 2).clamp(leftReservedSize, constraints.maxWidth - pillW);
+    // Keep pill within horizontal bounds (allow it to drift left of dot).
+    const pillW = 80.0;
+    final left =
+        (dotX - pillW / 2).clamp(leftReservedSize, containerWidth - pillW);
 
-      return Positioned(
-        left: left,
-        top: top,
-        child: Container(
-          width: pillW,
-          height: pillH,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: color, width: 1.2),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            labelText,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
+    return Positioned(
+      left: left,
+      top: top,
+      child: Container(
+        width: pillW,
+        height: pillH,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color, width: 1.2),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          labelText,
+          style: TextStyle(
+            color: color,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 }
 
