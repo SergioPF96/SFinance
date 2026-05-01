@@ -21,22 +21,40 @@ double niceInterval(double range) {
 
 /// Formats a value in cents as an abbreviated axis label.
 ///
+/// Pass [intervalCents] (the axis tick spacing in cents) to get the right
+/// decimal precision — e.g. a 1000-cent step in "k" range needs 2 decimals
+/// so "€1,41k" and "€1,42k" are visually distinct.
+///
 /// Examples: 0 → "€0", 4200 → "€42", 120000 → "€1,2k", 100000000 → "€1,0M"
-String formatAxisLabel(double cents) {
+String formatAxisLabel(double cents, {double? intervalCents}) {
   final euros = cents.abs() / 100;
-  String sign = cents < 0 ? '-' : '';
+  final String sign = cents < 0 ? '-' : '';
   if (euros >= 1000000) {
-    return '$sign€${_compact(euros / 1000000)}M';
+    final prec = _precisionForScale(intervalCents, 100 * 1000000);
+    return '$sign€${_compactPrec(euros / 1000000, prec)}M';
   }
   if (euros >= 1000) {
-    return '$sign€${_compact(euros / 1000)}k';
+    final prec = _precisionForScale(intervalCents, 100 * 1000);
+    return '$sign€${_compactPrec(euros / 1000, prec)}k';
   }
   return '$sign€${euros.round()}';
 }
 
-String _compact(double value) {
-  if (value == value.roundToDouble()) {
-    return value.round().toString();
-  }
-  return value.toStringAsFixed(1).replaceAll('.', ',');
+/// How many decimal places to show given the axis step size in the scaled unit.
+int _precisionForScale(double? intervalCents, double scaleCents) {
+  if (intervalCents == null) return 1;
+  final step = intervalCents / scaleCents;
+  if (step >= 1) return 0;
+  if (step >= 0.1) return 1;
+  return 2;
+}
+
+String _compactPrec(double value, int decimals) {
+  if (decimals == 0) return value.round().toString();
+  final s = value.toStringAsFixed(decimals);
+  final trimmed = s.replaceAll(RegExp(r'0+$'), '');
+  // If all decimals trimmed away (e.g. "25."), drop the dot too.
+  final result =
+      trimmed.endsWith('.') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+  return result.replaceAll('.', ',');
 }
