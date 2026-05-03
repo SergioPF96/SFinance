@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 /// Persistent app shell with top navigation bar and floating action buttons.
 ///
-/// Navigation tabs: Resumen, Analisis, Entradas, Recurrentes.
+/// Navigation tabs: Resumen, Análisis, Entradas, Recurrentes.
 /// Action buttons "+ Ingreso" (green) and "+ Gasto" (red) always visible
 /// in the top-right corner regardless of the active tab.
 class AppShell extends StatelessWidget {
@@ -37,7 +37,7 @@ class AppShell extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             _NavTab(
-              label: 'Analisis',
+              label: 'Análisis',
               selected: currentIndex == 1,
               onTap: () => context.go('/analisis'),
             ),

@@ -102,7 +102,7 @@ The user navigates to the Análisis view to see how their balance, expenses, and
 
 1. **Given** the user navigates to Análisis, **When** the view loads, **Then** the same KPI strip as Resumen is visible at the top.
 2. **Given** the Análisis view is open, **When** viewing the charts, **Then** three stacked line charts appear: "Evolución del Balance" (blue), "Evolución de Gastos" (red), and "Evolución de Ingresos" (green).
-3. **Given** each chart has a time range selector, **When** the user selects "Último año" for the Balance chart and "Últimos 7 días" for the Gastos chart, **Then** each chart updates independently to show data for its own selected range.
+3. **Given** the shared time range selector at the top, **When** the user selects "Último año", **Then** all three charts update simultaneously to show data for that period.
 4. **Given** the default time range is "Últimos 7 días", **When** the Análisis view first loads, **Then** all three charts default to showing the last 7 days.
 
 ---
@@ -201,8 +201,8 @@ The user navigates to the Entradas view and switches to the "Recurrentes" tab to
 
 - **FR-022**: The Análisis view MUST display the same KPI strip as Resumen.
 - **FR-023**: The Análisis view MUST display three stacked line charts: "Evolución del Balance" (blue), "Evolución de Gastos" (red), "Evolución de Ingresos" (green).
-- **FR-024**: Each chart MUST have an independent time range selector with options: Últimos 7 días (default), Último mes, Últimos 3 meses, Último año, Desde origen.
-- **FR-025**: Changing a time range selector MUST update only the chart it belongs to, without affecting the other charts.
+- **FR-024**: The Análisis view MUST have a single shared time range selector at the top with options: Últimos 7 días (default), Último mes, Últimos 3 meses, Último año, Desde origen. The selector controls all three charts simultaneously.
+- **FR-025**: Changing the shared time range selector MUST update all three charts simultaneously to reflect the selected period.
 
 #### Entradas View
 

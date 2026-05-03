@@ -12,11 +12,11 @@ enum ExpenseCategory {
       case ExpenseCategory.servicio:
         return 'Servicio';
       case ExpenseCategory.suscripcion:
-        return 'Suscripcion';
+        return 'Suscripción';
       case ExpenseCategory.suministroVariable:
         return 'Suministro variable';
       case ExpenseCategory.financiacion:
-        return 'Financiacion';
+        return 'Financiación';
     }
   }
 }
