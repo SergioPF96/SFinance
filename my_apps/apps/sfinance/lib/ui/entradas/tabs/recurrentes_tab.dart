@@ -2,39 +2,142 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../../domain/category_filter.dart';
 import '../../../providers/template_providers.dart';
 import '../../recurrentes/template_detail_modal.dart';
 
-/// Recurring templates list — extracted from RecurrentesView.
+/// Recurring templates list with category filter and column headers.
 class RecurrentesTab extends ConsumerWidget {
   const RecurrentesTab({super.key});
 
+  // Only categories that can appear on recurring templates.
+  static const _filterValues = [
+    CategoryFilter.all,
+    CategoryFilter.suscripcion,
+    CategoryFilter.financiacion,
+    CategoryFilter.salario,
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncTemplates = ref.watch(activeTemplatesProvider);
+    final selectedCategory = ref.watch(selectedRecurrentesCategoryFilterProvider);
+    final filteredAsync = ref.watch(filteredTemplatesProvider);
 
-    return asyncTemplates.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const Center(
-        child: Text(
-          'Error cargando los templates recurrentes.',
-          style: TextStyle(color: AppColors.onBackgroundMuted),
-        ),
-      ),
-      data: (templates) {
-        if (templates.isEmpty) {
-          return const _EmptyState();
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: templates.length,
-          separatorBuilder: (_, __) => const Divider(
-            color: AppColors.onBackgroundMuted,
-            height: 1,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Category filter
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: DropdownButton<CategoryFilter>(
+            value: selectedCategory,
+            dropdownColor: AppColors.surface,
+            style: const TextStyle(color: AppColors.onBackground, fontSize: 13),
+            underline: Container(height: 1, color: AppColors.balance),
+            isDense: true,
+            items: _filterValues
+                .map(
+                  (f) => DropdownMenuItem<CategoryFilter>(
+                    value: f,
+                    child: Text(f.label),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) {
+              if (v != null) {
+                ref
+                    .read(selectedRecurrentesCategoryFilterProvider.notifier)
+                    .state = v;
+              }
+            },
           ),
-          itemBuilder: (context, i) => _TemplateRow(template: templates[i]),
-        );
-      },
+        ),
+        const Divider(color: AppColors.surfaceVariant, height: 1),
+        // Column headers
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+          child: Row(
+            children: const [
+              Expanded(
+                flex: 3,
+                child: Text(
+                  'Nombre · Categoría',
+                  style: TextStyle(
+                    color: AppColors.onBackgroundMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Importe',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: AppColors.onBackgroundMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Próximo pago',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: AppColors.onBackgroundMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Fecha fin',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: AppColors.onBackgroundMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(color: AppColors.surfaceVariant, height: 1),
+        Expanded(
+          child: filteredAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => const Center(
+              child: Text(
+                'Error cargando los templates recurrentes.',
+                style: TextStyle(color: AppColors.onBackgroundMuted),
+              ),
+            ),
+            data: (templates) {
+              if (templates.isEmpty) {
+                return const _EmptyState();
+              }
+              return ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: templates.length,
+                separatorBuilder: (_, __) => const Divider(
+                  color: AppColors.onBackgroundMuted,
+                  height: 1,
+                ),
+                itemBuilder: (context, i) =>
+                    _TemplateRow(template: templates[i]),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

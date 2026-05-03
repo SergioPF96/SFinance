@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../../domain/category_filter.dart';
+import '../../../domain/time_range.dart';
 import '../../../providers/transaction_providers.dart';
-import '../../analisis/time_range_selector.dart';
-import '../category_filter_selector.dart';
+import '../transaction_detail_modal.dart';
 
-/// Entradas list: date range filter + category filter + transactions ListView.
+/// Entradas list: two dropdown filters side by side + header row + tappable transactions.
 class TransaccionesTab extends ConsumerWidget {
   const TransaccionesTab({super.key});
 
@@ -19,20 +20,51 @@ class TransaccionesTab extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
             children: [
-              TimeRangeSelector(
-                selected: selectedRange,
+              _FilterDropdown<TimeRange>(
+                value: selectedRange,
+                items: TimeRange.values,
+                labelOf: (r) => r.label,
                 onChanged: (r) =>
                     ref.read(selectedTimeRangeProvider.notifier).state = r,
               ),
-              const SizedBox(height: 8),
-              CategoryFilterSelector(
-                selected: selectedCategory,
+              const SizedBox(width: 16),
+              _FilterDropdown<CategoryFilter>(
+                value: selectedCategory,
+                items: CategoryFilter.values,
+                labelOf: (c) => c.label,
                 onChanged: (c) =>
                     ref.read(selectedCategoryFilterProvider.notifier).state = c,
+              ),
+            ],
+          ),
+        ),
+        const Divider(color: AppColors.surfaceVariant, height: 1),
+        // Column headers
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            children: const [
+              SizedBox(width: 56),
+              Expanded(
+                child: Text(
+                  'Nombre · Categoría',
+                  style: TextStyle(
+                    color: AppColors.onBackgroundMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                'Importe',
+                style: TextStyle(
+                  color: AppColors.onBackgroundMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -66,14 +98,21 @@ class TransaccionesTab extends ConsumerWidget {
                     const Divider(color: AppColors.surfaceVariant, height: 1),
                 itemBuilder: (_, i) {
                   final entry = entries[i];
-                  return TransactionRow(
-                    name: entry.name,
-                    categoryLabel: entry.categoryLabel,
-                    date: entry.date,
-                    amountCents: entry.amountCents,
-                    transactionType: entry.transactionType,
-                    isRecurring: entry.isRecurring,
-                    recurringDetail: entry.recurringDetail,
+                  return InkWell(
+                    onTap: () => showDialog<void>(
+                      context: context,
+                      builder: (_) =>
+                          TransactionDetailModal(entry: entry),
+                    ),
+                    child: TransactionRow(
+                      name: entry.name,
+                      categoryLabel: entry.categoryLabel,
+                      date: entry.date,
+                      amountCents: entry.amountCents,
+                      transactionType: entry.transactionType,
+                      isRecurring: entry.isRecurring,
+                      recurringDetail: entry.recurringDetail,
+                    ),
                   );
                 },
               );
@@ -81,6 +120,43 @@ class TransaccionesTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FilterDropdown<T> extends StatelessWidget {
+  const _FilterDropdown({
+    super.key,
+    required this.value,
+    required this.items,
+    required this.labelOf,
+    required this.onChanged,
+  });
+
+  final T value;
+  final List<T> items;
+  final String Function(T) labelOf;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButton<T>(
+      value: value,
+      dropdownColor: AppColors.surface,
+      style: const TextStyle(color: AppColors.onBackground, fontSize: 13),
+      underline: Container(height: 1, color: AppColors.balance),
+      isDense: true,
+      items: items
+          .map(
+            (item) => DropdownMenuItem<T>(
+              value: item,
+              child: Text(labelOf(item)),
+            ),
+          )
+          .toList(),
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
     );
   }
 }

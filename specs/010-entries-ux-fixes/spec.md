@@ -3,7 +3,14 @@
 **Feature Branch**: `010-entries-ux-fixes`  
 **Created**: 2026-04-19  
 **Status**: Draft  
-**Input**: User description: "Se tienen que hacer los siguientes cambios: 1. Las entradas no deberían poder eliminarse. 2. En los iconos de cada entrada aparece un texto de overflow que no debe aparecer. 3. En la vista de Analisis las graficas no tienen medidas, se quieren referencias en eje x e y. 4. Añadir filtro de categoría en la vista de entradas."
+**Input**: User description: "Se tienen que hacer los siguientes cambios: 1. Las entradas no deberían poder eliminarse. 2. En los iconos de cada entrada aparece un texto de overflow que no debe aparecer. 3. En la vista de Análisis las gráficas no tienen medidas, se quieren referencias en eje x e y. 4. Añadir filtro de categoría en la vista de entradas."
+
+**Amendments** (smoke-tested and merged):
+- US4 filters changed from ChoiceChip selectors to side-by-side DropdownButton widgets.
+- Column headers added to both Transacciones and Recurrentes tabs.
+- Transaction rows made tappable: open a read-only detail modal (name, type, category, date, description if present, recurrence detail if present, amount).
+- Category filter added to Recurrentes tab (Todas / Suscripción / Financiación / Salario).
+- Both category filters (Transacciones + Recurrentes) reset to "Todas" when leaving the view.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -55,21 +62,24 @@ Las gráficas de la vista Análisis muestran marcas y etiquetas en el eje X (tie
 
 ---
 
-### User Story 4 - Filtro de Categoría en Vista de Entradas (Priority: P2)
+### User Story 4 - Filtros de Categoría en Vista de Entradas (Priority: P2)
 
-Junto al filtro de temporalidad existente, aparece un filtro de categoría que permite al usuario ver solo las entradas de tipo "Financiación", "Suscripción" o "Producto" (o todas a la vez).
+En la pestaña Transacciones, los dos filtros (temporalidad y categoría) son selectores desplegables (`DropdownButton`) colocados uno al lado del otro. En la pestaña Recurrentes, aparece un filtro de categoría independiente. Ambas pestañas muestran una fila de cabeceras de columna sobre la lista.
 
-**Why this priority**: Permite segmentar gastos por tipo sin necesidad de ir a la vista de Análisis, aumentando la utilidad de la vista principal de entradas.
+**Why this priority**: Permite segmentar entradas por tipo sin necesidad de ir a la vista de Análisis, y mejora la legibilidad de los datos con cabeceras de columna claras.
 
-**Independent Test**: Seleccionar la categoría "Suscripción" y verificar que solo aparecen entradas de ese tipo; volver a "Todas" y verificar que vuelven todas las entradas.
+**Independent Test**: En Transacciones, seleccionar la categoría "Suscripción" y verificar que solo aparecen entradas de ese tipo; en Recurrentes, filtrar por "Salario" y verificar que solo aparecen plantillas de salario.
 
 **Acceptance Scenarios**:
 
-1. **Given** la vista Entradas, **When** el usuario la abre, **Then** aparece un control de filtro de categoría con las opciones: Todas, Financiación, Suscripción, Producto.
+1. **Given** la pestaña Transacciones, **When** el usuario la abre, **Then** aparecen dos `DropdownButton` en línea horizontal: uno para la temporalidad y otro para la categoría (Todas, Producto, Servicio, Suscripción, Suministro variable, Financiación, Salario, Venta).
 2. **Given** el filtro de categoría en "Todas", **When** el usuario selecciona "Suscripción", **Then** la lista se actualiza mostrando solo entradas de categoría Suscripción.
 3. **Given** un filtro de categoría activo, **When** el usuario cambia también el filtro de temporalidad, **Then** ambos filtros se aplican combinados (AND).
 4. **Given** ninguna entrada coincide con la combinación de filtros, **When** se aplican, **Then** la lista muestra un estado vacío descriptivo (sin errores).
 5. **Given** el filtro de categoría en cualquier valor, **When** el usuario navega a otra vista y vuelve, **Then** el filtro se restablece a "Todas" (estado por defecto).
+6. **Given** la pestaña Transacciones con entradas, **When** el usuario hace clic en una fila, **Then** se abre un modal de solo lectura mostrando: nombre, tipo (ingreso/gasto), categoría, fecha, descripción (si existe) e importe.
+7. **Given** la pestaña Recurrentes, **When** el usuario la abre, **Then** aparece un `DropdownButton` de categoría con las opciones: Todas, Suscripción, Financiación, Salario.
+8. **Given** la pestaña Transacciones o Recurrentes, **When** el usuario observa la lista, **Then** aparece una fila de cabeceras de columna que describe el contenido de cada columna.
 
 ---
 
@@ -88,9 +98,12 @@ Junto al filtro de temporalidad existente, aparece un filtro de categoría que p
 - **FR-003**: Los iconos de tipo/categoría en cada fila de la vista Entradas DEBEN renderizarse dentro de sus límites de layout sin desbordamiento visual.
 - **FR-004**: La vista Análisis DEBE mostrar etiquetas numéricas de importe en el eje Y a intervalos regulares, formateadas con símbolo de divisa y separador de miles según el locale del usuario.
 - **FR-005**: La vista Análisis DEBE mostrar etiquetas de fecha o periodo en el eje X a intervalos regulares, sin solapamiento entre etiquetas.
-- **FR-006**: La vista Entradas DEBE incluir un control de filtro de categoría con las opciones: Todas, Financiación, Suscripción, Producto.
-- **FR-007**: Los filtros de temporalidad y de categoría en la vista Entradas DEBEN aplicarse de forma combinada (intersección).
-- **FR-008**: El filtro de categoría DEBE restablecerse a "Todas" al abandonar la vista Entradas.
+- **FR-006**: La pestaña Transacciones DEBE incluir dos `DropdownButton` en línea horizontal: uno de temporalidad y uno de categoría. Las opciones del de categoría son: Todas, Producto, Servicio, Suscripción, Suministro variable, Financiación, Salario, Venta.
+- **FR-006b**: La pestaña Recurrentes DEBE incluir un `DropdownButton` de categoría con las opciones: Todas, Suscripción, Financiación, Salario.
+- **FR-006c**: Ambas pestañas (Transacciones y Recurrentes) DEBEN mostrar una fila de cabeceras de columna encima de la lista de datos.
+- **FR-006d**: Cada fila de la pestaña Transacciones DEBE ser clicable y abrir un modal de solo lectura que muestre todos los campos de la transacción: nombre, tipo, categoría, fecha, descripción (si existe), detalle de recurrencia (si existe) e importe.
+- **FR-007**: Los filtros de temporalidad y de categoría en la pestaña Transacciones DEBEN aplicarse de forma combinada (intersección).
+- **FR-008**: Los filtros de categoría de Transacciones y Recurrentes DEBEN restablecerse a "Todas" al abandonar la vista Entradas.
 
 ### Key Entities
 
@@ -106,13 +119,16 @@ Junto al filtro de temporalidad existente, aparece un filtro de categoría que p
 - **SC-001**: En la vista Entradas, ninguna fila muestra botón o icono de eliminar.
 - **SC-002**: En la vista Entradas, ninguna fila muestra texto de desbordamiento de layout.
 - **SC-003**: En la vista Análisis, el 100 % de las gráficas con datos muestran etiquetas en ambos ejes.
-- **SC-004**: Al aplicar el filtro de categoría "Suscripción", la lista muestra exclusivamente entradas de esa categoría.
+- **SC-004**: Al aplicar el filtro de categoría "Suscripción" en Transacciones, la lista muestra exclusivamente entradas de esa categoría.
 - **SC-005**: La combinación de filtro de categoría + filtro de temporalidad produce resultados correctos en el 100 % de las combinaciones posibles.
+- **SC-006**: Al hacer clic en cualquier fila de Transacciones se abre el modal de detalle con los datos correctos de esa entrada.
+- **SC-007**: Al aplicar el filtro de categoría en Recurrentes, la lista muestra exclusivamente plantillas de esa categoría.
 
 ## Assumptions
 
-- Las categorías posibles son exactamente tres: Financiación, Suscripción y Producto (las mismas que ya existen en el modelo de datos).
-- El filtro de categoría no persiste entre sesiones ni entre navegaciones; se restablece a "Todas" al salir de la vista.
+- El filtro de categoría de Transacciones muestra todas las categorías del modelo (8 valores + Todas).
+- El filtro de categoría de Recurrentes muestra solo las categorías aplicables a plantillas: Todas, Suscripción, Financiación, Salario.
+- Ambos filtros de categoría se implementan como `DropdownButton`; el filtro de temporalidad de Transacciones también es `DropdownButton`.
+- Los filtros de categoría no persisten entre sesiones ni entre navegaciones; se restablecen a "Todas" al salir de la vista.
 - Los ejes de las gráficas se añaden a todas las gráficas presentes en la vista Análisis.
-- El diseño visual del filtro de categoría sigue el mismo patrón de chips/botones del filtro de temporalidad existente.
 - No se añaden nuevas categorías en este feature; solo se implementa el filtro sobre las existentes.

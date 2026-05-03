@@ -21,11 +21,11 @@ enum CategoryFilter {
       case CategoryFilter.servicio:
         return 'Servicio';
       case CategoryFilter.suscripcion:
-        return 'Suscripcion';
+        return 'Suscripción';
       case CategoryFilter.suministroVariable:
         return 'Suministro variable';
       case CategoryFilter.financiacion:
-        return 'Financiacion';
+        return 'Financiación';
       case CategoryFilter.salario:
         return 'Salario';
       case CategoryFilter.venta:

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import 'package:shared_services/shared_services.dart';
+import '../domain/category_filter.dart';
 import 'dao_providers.dart';
 
 // ---------------------------------------------------------------------------
@@ -43,6 +44,7 @@ class TemplateDisplay {
     required this.id,
     required this.name,
     required this.categoryLabel,
+    required this.rawCategory,
     required this.periodicity,
     required this.endDate,
     required this.transactionType,
@@ -54,6 +56,9 @@ class TemplateDisplay {
   final int id;
   final String name;
   final String categoryLabel;
+
+  /// Raw category value as stored in the database (e.g. 'suscripcion', 'salario').
+  final String rawCategory;
   final String periodicity;
 
   /// Null for open-ended subscriptions ("Sin fecha de fin").
@@ -94,6 +99,7 @@ TemplateDisplay _toDisplay(RecurringTemplateRow row) {
     id: row.id,
     name: row.name,
     categoryLabel: catLabel,
+    rawCategory: row.category,
     periodicity: perLabel,
     endDate: row.endDate,
     transactionType: row.transactionType == 'income'
@@ -224,3 +230,23 @@ final templateDetailProvider = StateNotifierProvider.autoDispose<
     TemplateDetailNotifier, TemplateDetailState>(
   (_) => TemplateDetailNotifier(),
 );
+
+// ---------------------------------------------------------------------------
+// Recurrentes category filter
+// ---------------------------------------------------------------------------
+
+/// Selected category filter for the Recurrentes tab.
+/// Reset to [CategoryFilter.all] when EntradasView is entered.
+final selectedRecurrentesCategoryFilterProvider =
+    StateProvider<CategoryFilter>((ref) => CategoryFilter.all);
+
+/// Templates filtered by [selectedRecurrentesCategoryFilterProvider].
+final filteredTemplatesProvider =
+    Provider.autoDispose<AsyncValue<List<TemplateDisplay>>>((ref) {
+  final category = ref.watch(selectedRecurrentesCategoryFilterProvider);
+  final templatesAsync = ref.watch(activeTemplatesProvider);
+  return templatesAsync.whenData(
+    (list) =>
+        list.where((t) => category.matches(t.rawCategory)).toList(),
+  );
+});

@@ -113,9 +113,9 @@ Encapsulado en `lib/domain/chart_axis.dart` (Dart puro, sin Flutter) para ser te
 | `all` | Todas |
 | `producto` | Producto |
 | `servicio` | Servicio |
-| `suscripcion` | Suscripcion |
+| `suscripcion` | Suscripción |
 | `suministroVariable` | Suministro variable |
-| `financiacion` | Financiacion |
+| `financiacion` | Financiación |
 | `salario` | Salario |
 | `venta` | Venta |
 
@@ -193,14 +193,11 @@ final filteredEntriesProvider = Provider.autoDispose<AsyncValue<List<Transaction
 
 ### 4.5 UI del selector
 
-**Decision**: Nuevo widget `CategoryFilterSelector` análogo a `TimeRangeSelector`:
+**Decision**: Los dos filtros de la pestaña Transacciones son `DropdownButton` en un `Row` horizontal. Un helper privado `_FilterDropdown<T>` encapsula el estilo (dropdownColor, underline con `AppColors.balance`, isDense: true). El filtro de la pestaña Recurrentes es también un `DropdownButton` pero muestra solo tres valores: Suscripción, Financiación, Salario (más Todas).
 
-- Mismo patrón de `Wrap` de `ChoiceChip`.
-- Etiquetas en español desde `CategoryFilter.label`.
-- Colores: selected → `AppColors.balance.withOpacity(0.2)`, background → `AppColors.surfaceVariant`.
-- Padding del padre en `EntradasView`: un `Column` con `TimeRangeSelector` arriba y `CategoryFilterSelector` debajo, ambos dentro del mismo `Padding(EdgeInsets.all(16))`, separados por `SizedBox(height: 8)`.
+Por debajo de los filtros, en ambas pestañas, se añade una fila de cabeceras de columna con texto muted (`AppColors.onBackgroundMuted`, fontSize 11, fontWeight w600) que describe las columnas de la lista.
 
-**Rationale**: Reutiliza el patrón ya validado visualmente. Los 8 chips de categoría caben en `Wrap` (pasan a una segunda línea en pantallas estrechas).
+**Rationale**: Los `DropdownButton` son más compactos horizontalmente que un `Wrap` de chips, lo que libera espacio vertical para las cabeceras y la lista. Con dos filtros side-by-side el `Wrap` quedaría redundante; la alineación horizontal es más clara.
 
 ---
 
@@ -211,10 +208,11 @@ final filteredEntriesProvider = Provider.autoDispose<AsyncValue<List<Transaction
 | R1 | Quitar `onDelete` de la llamada en Entradas | `entradas_view.dart` | widget test |
 | R2 | Mover `recurringDetail` a subtitle | `packages/shared_ui/.../transaction_row.dart` | widget test |
 | R3 | Activar `SideTitles` con `niceInterval` puro | `analysis_line_chart.dart` + nuevo `domain/chart_axis.dart` | unit + widget |
-| R4a | Enum `CategoryFilter` (8 valores + all) | nuevo `domain/category_filter.dart` | unit |
-| R4b | `StateProvider.autoDispose` para el filtro | `transaction_providers.dart` | unit |
-| R4c | Provider derivado `filteredEntriesProvider` | `transaction_providers.dart` | unit |
-| R4d | Widget `CategoryFilterSelector` | nuevo `ui/entradas/category_filter_selector.dart` | widget |
-| R4e | `rawCategory` en `TransactionDisplay` | `transaction_providers.dart` | — |
+| R4a | Enum `CategoryFilter` (8 valores + all, con tildes) | nuevo `domain/category_filter.dart` | unit |
+| R4b | `StateProvider` para filtro Transacciones + `StateProvider` para filtro Recurrentes | `transaction_providers.dart`, `template_providers.dart` | unit |
+| R4c | Provider derivado `filteredEntriesProvider` + `filteredTemplatesProvider` | `transaction_providers.dart`, `template_providers.dart` | unit |
+| R4d | Filtros como `DropdownButton` side-by-side; cabeceras de columna en ambas pestañas | `transacciones_tab.dart`, `recurrentes_tab.dart` | widget |
+| R4e | `rawCategory` en `TransactionDisplay` y `TemplateDisplay` | `transaction_providers.dart`, `template_providers.dart` | — |
+| R4f | `TransactionDetailModal` (solo lectura); filas de Transacciones clicables | nuevo `ui/entradas/transaction_detail_modal.dart` | widget |
 
 Todas las decisiones son compatibles con el Constitution Check. No se introduce ninguna dependencia nueva.

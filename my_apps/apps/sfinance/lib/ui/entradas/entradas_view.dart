@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../domain/category_filter.dart';
+import '../../providers/template_providers.dart';
 import '../../providers/transaction_providers.dart';
 import 'tabs/transacciones_tab.dart';
 import 'tabs/recurrentes_tab.dart';
@@ -29,6 +30,8 @@ class _EntradasViewState extends ConsumerState<EntradasView>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(selectedCategoryFilterProvider.notifier).state =
+            CategoryFilter.all;
+        ref.read(selectedRecurrentesCategoryFilterProvider.notifier).state =
             CategoryFilter.all;
       }
     });
