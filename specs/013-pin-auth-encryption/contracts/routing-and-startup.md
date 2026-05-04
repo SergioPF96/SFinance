@@ -2,6 +2,7 @@
 
 **Feature**: 013-pin-auth-encryption
 **Package**: `apps/sfinance`
+**Last revised**: 2026-05-04 (D5 simplified, D6 collapsed, D9 changed to fatal error)
 
 This document describes how the existing app startup and routing change
 to enforce that no financial data is rendered before authentication.
@@ -31,8 +32,6 @@ Future<void> main() async {
   await initializeDateFormatting('es_ES', null);
 
   // No DB opened here. Auth must complete first.
-  // Delete pre-existing unencrypted DB if no envelope exists (Decision 9).
-
   final container = ProviderContainer();
   await container.read(authProvider.notifier).bootstrap();
 
@@ -44,10 +43,14 @@ Future<void> main() async {
 - Database is no longer opened in `main()`. It is opened lazily by
   `databaseProvider`, which depends on `masterKeyProvider`, which is only
   populated after auth.
-- `RecurringGenerationService.run` moves to a one-shot effect listening
-  for `AuthState.authenticated` (see section 3 below).
-- `main()` performs the unencrypted-DB cleanup before bootstrapping auth
-  (Decision 9 in research.md).
+- `RecurringGenerationService.run` moves into `AuthNotifier`'s success
+  path (see section 3 below). It runs explicitly on every successful
+  unlock before transitioning to `authenticated`.
+- `main()` no longer touches the database file. The pre-existing
+  unencrypted DB check happens during `AuthService.bootstrap()`
+  (research.md Decision 9): if the envelope is absent but the file
+  exists, `bootstrap()` returns `AuthState.fatalError` and the user
+  sees a screen instructing them to delete the file manually.
 
 ## 2. app_router.dart — Auth-aware redirect
 
@@ -73,7 +76,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authProvider).valueOrNull;
       final loc = state.matchedLocation;
 
-      // Bootstrap / fatal states are handled by the auth screens themselves
       switch (authState) {
         case AuthStateBootstrapping():
           return '/auth/bootstrap';
@@ -126,7 +128,11 @@ set. With this feature, the trigger order becomes:
 
 1. `AuthState.needsSetup` → router redirects to `/auth/setup`.
 2. User completes PIN setup. `AuthService.setupPin(pin)` returns the
-   master key. `AuthNotifier` transitions to `AuthState.authenticated`.
+   master key. `AuthNotifier` then:
+   - Stores the master key in its state object.
+   - Reads `databaseProvider` (which now resolves) and runs
+     `RecurringGenerationService.run(db)` once.
+   - Transitions to `AuthState.authenticated`.
 3. Router's redirect now matches `/resumen`.
 4. The home screen's existing "no initial capital" detection runs and
    shows the initial balance dialog (unchanged code path).
@@ -135,25 +141,33 @@ set. With this feature, the trigger order becomes:
 sequence "PIN setup → initial balance" is enforced by ordering, not by
 explicit coupling.
 
-## 4. Post-auth one-shot: RecurringGenerationService
+## 4. AuthNotifier success path (post-auth side effect)
 
 ```dart
-final _recurringGenOnceProvider = Provider<void>((ref) {
-  ref.listen<AsyncValue<AuthState>>(authProvider, (prev, next) {
-    final wasAuth = prev?.valueOrNull is AuthStateAuthenticated;
-    final isAuth = next.valueOrNull is AuthStateAuthenticated;
-    if (!wasAuth && isAuth) {
-      // First entry into authenticated state — run once.
+class AuthNotifier extends AsyncNotifier<AuthState> implements Listenable {
+  Future<void> submitPin(String pin) async {
+    state = const AsyncData(AuthStateVerifying());
+    try {
+      final masterKey = await ref.read(authServiceProvider).verifyPin(pin);
+      // Make the master key available to databaseProvider via the new state
+      state = AsyncData(AuthStateAuthenticated(masterKey));
+      // Run post-auth side effects exactly once per session
       final db = ref.read(databaseProvider);
-      RecurringGenerationService.run(db);
+      await RecurringGenerationService.run(db);
+    } on WrongPinException catch (e) {
+      state = AsyncData(AuthStateNeedsAuth(error: e));
+    } on LockedOutException catch (e) {
+      state = AsyncData(AuthStateLockedOut(e.expiresAt));
     }
-  });
-});
+  }
+
+  // Equivalent flow for setupPin(pin) on first launch.
+}
 ```
 
-`SFinanceApp` reads this provider once via `ref.watch(_recurringGenOnceProvider)`
-to start the listener. The listener fires exactly once per session, on
-the transition into `authenticated`.
+This replaces the earlier "one-shot listener provider" pattern. The
+side effect lives at its obvious trigger point (the success branch of
+`submitPin`/`setupPin`) — easier to read, no additional indirection.
 
 ## 5. databaseProvider — fail-fast guard
 
@@ -199,18 +213,31 @@ development time rather than silently leaking access patterns.
   `authenticated` or `lockedOut`.
 
 ### LockoutScreen
-- Reads `LockoutState.lockoutExpiresAt` via the auth notifier.
+- Reads `LockoutState.expiresAt` via the auth notifier.
 - Renders countdown updated by a `Timer.periodic(Duration(seconds: 1))`.
 - When countdown reaches zero, calls
   `ref.read(authProvider.notifier).clearLockout()` — transitions back to
   `needsAuth`.
 
-### PinInputWidget (extensible)
-- Internal `PinInputBackend` strategy:
-  - `_DesktopKeyboardBackend`: `TextField` with numeric `inputFormatters`,
-    `maxLength: 4`, `obscureText: true`, auto-submits on 4th digit, accepts
-    Enter. Tab navigation works as standard.
-  - `_AndroidKeypadBackend`: out of scope for this feature. Stub class with
-    `assert(false, 'Not implemented')` placed for documentation only.
+### FatalErrorScreen
+- Reads the error reason from `AuthStateFatalError(reason)`.
+- Renders the reason verbatim. For the "pre-existing unencrypted DB"
+  case, the reason includes the absolute path of the offending file and
+  instructions to delete it manually.
+- No retry/dismiss — the screen stays until the user resolves the
+  underlying condition and relaunches the app.
+
+### PinInputWidget
+- Single, straightforward implementation: a `TextField` with
+  - `keyboardType: TextInputType.number`
+  - `inputFormatters: [FilteringTextInputFormatter.digitsOnly]`
+  - `maxLength: 4`
+  - `obscureText: true`
+  - `textInputAction: TextInputAction.done`
+  - autofocus by default
+  - calls `onPinComplete(pin)` when 4 digits typed; also accepts Enter.
 - Public API: `PinInputWidget({ required ValueChanged<String> onPinComplete,
-  bool autofocus = true })`.
+  bool autofocus = true, bool enabled = true })`.
+- Inline `// TODO(android-keypad): when adding the Android phase,
+  isolate the input mechanism behind a backend interface.` comment marks
+  the future refactor point. **No strategy pattern is built today.**

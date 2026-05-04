@@ -2,273 +2,292 @@
 
 **Feature**: 013-pin-auth-encryption
 **Date**: 2026-05-04
+**Last revised**: 2026-05-04 (after review — D1, D6, D9 amended; D11 added for envelope serialization simplification)
 
 This document records the technical decisions taken during planning, the
-rationale behind each, and the alternatives considered. The decisions in the
-user-supplied technical context are recorded here verbatim where they were
-accepted, and explicitly amended where research surfaced a better path.
+rationale behind each, and the alternatives considered.
 
-## Decision 1 — Native SQLite encryption library
+## Decision 1 — Native SQLite encryption library *(amended)*
 
-**Decision**: Use `sqlite3_multiple_ciphers` (via `drift ^2.32.0`), **not**
-`sqlcipher_flutter_libs` as originally proposed.
+**Decision**: Use the **`sqlite3` ^3.x package** (the modern Dart binding)
+configured with a `pubspec.yaml` user-defines hook to select the
+**`sqlite3mc`** native source. Bump Drift from `^2.20.0` to `^2.32.0`.
+
+**Configuration** (in workspace-root `pubspec.yaml`):
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+```
+
+This tells the `sqlite3` package's build hook to bundle SQLite3MultipleCiphers
+(SQLCipher v4 cipher format compatible) instead of the standard SQLite
+binary.
 
 **Rationale**:
-- The official Drift documentation
-  (https://drift.simonbinder.eu/platforms/encryption/) states verbatim:
-  > "Previous versions of the `sqlite3` package required a dependency on
-  > `sqlcipher_flutter_libs`. That package is no longer necessary after
-  > upgrading to drift 2.32.0 and can be removed."
-- `sqlcipher_flutter_libs` has unresolved Windows desktop build issues
-  related to OpenSSL (`libcrypto`) discovery and Windows system library
-  linkage. SFinance's primary target is Windows, making this a blocker.
-- `sqlite3_multiple_ciphers` bundles multiple cipher schemes including
-  **SQLCipher v4** (the cipher format used by SQLCipher itself). This means
-  the on-disk format and `PRAGMA key` semantics remain identical to the
-  Constitution mandate: "AES-256 SQLCipher full-database encryption."
-- Constitution Principle V mandates "SQLCipher (AES-256 full-database
-  encryption)" — this refers to the cipher format, which `sqlite3_multiple_ciphers`
-  provides. Compliance is preserved.
+- **Verified directly on pub.dev**:
+  - `sqlcipher_flutter_libs` is published as `0.7.0+eol`. README states:
+    "Starting from version `0.7.0`, this package no longer does anything."
+    Description: "Not used anymore, update to version 3.x of package:sqlite3
+    instead."
+  - `sqlite3_flutter_libs` is published as `0.6.0+eol`. Same EOL status.
+- The official Drift docs at
+  https://drift.simonbinder.eu/Platforms/encryption/ say verbatim:
+  "Previous versions of the `sqlite3` package required a dependency on
+  `sqlcipher_flutter_libs`. That package is no longer necessary after
+  upgrading to drift 2.32.0 and can be removed."
+- The recommended replacement is the `sqlite3` 3.x package with a build
+  hook selecting the `sqlite3mc` source.
+- SQLite3MultipleCiphers bundles the SQLCipher v4 cipher format. The
+  Constitution Principle V mandate ("SQLCipher AES-256 full-database
+  encryption") refers to the cipher format on disk, which is preserved.
+- Windows desktop is supported via the same package — no OpenSSL
+  dependency, no CMake build issues.
 
-**Alternatives considered**:
-- **`sqlcipher_flutter_libs`**: rejected due to Windows desktop build
-  failures and deprecation in Drift's official documentation.
-- **Roll-our-own per-field encryption**: explicitly prohibited by
-  Constitution Principle V ("Field-level encryption is explicitly prohibited
-  as a substitute for full-database encryption").
+**Alternatives rejected**:
+- `sqlcipher_flutter_libs` — EOL on pub.dev as of v0.7.0+eol.
+- `sqlite3_flutter_libs` — EOL on pub.dev as of v0.6.0+eol.
+- Field-level encryption — explicitly prohibited by Constitution V.
 
-**Implications**:
-- Drift must be upgraded from `^2.20.0` to `^2.32.0` in
-  `shared_services/pubspec.yaml` and matching `dev_dependencies` everywhere.
-- `sqlite3_flutter_libs` must be removed and replaced with
-  `sqlite3_multiple_ciphers` in `shared_services/pubspec.yaml`. The two are
-  mutually exclusive (linker conflict); confirmed by upstream guidance.
-- The opening pattern uses `PRAGMA key = "x'<hex>'";` — the `x'…'` hex
-  literal form, which `sqlite3_multiple_ciphers` accepts identically to
-  SQLCipher.
+**Implications for `pubspec.yaml`**:
+- `shared_services/pubspec.yaml`: drop `sqlite3_flutter_libs`; add
+  `sqlite3: ^3.0.0`; bump `drift: ^2.32.0` and `drift_dev: ^2.32.0`.
+- Workspace root `pubspec.yaml` (`my_apps/pubspec.yaml`): add the `hooks`
+  block above.
+
+The opening pattern in `app_database.dart` becomes:
+
+```dart
+NativeDatabase.createInBackground(
+  file,
+  setup: (rawDb) {
+    rawDb.execute("PRAGMA key = \"x'${hexKey}'\";");
+  },
+);
+```
+
+(Hex literal form `x'…'` interpreted as a raw key by SQLCipher cipher mode.)
 
 ## Decision 2 — Pure-Dart cryptography library
 
-**Decision**: Use `cryptography` (package by `dint`) — version `^2.9.0`.
+**Decision**: Use `cryptography ^2.9.0` (package by `dint`).
 
 **Rationale**:
 - Active maintenance (last release ~5 months ago vs. ~14 months for
   `pointycastle`).
 - Cleaner async API: `await Pbkdf2(macAlgorithm: Hmac.sha256(),
   iterations: 500000, bits: 256).deriveKeyFromPassword(password: pin,
-  nonce: salt)` — type-safe and idiomatic.
-- AES-GCM is exposed as `AesGcm.with256bits()` with first-class
-  authentication tag handling (encryption returns `SecretBox` with
-  `cipherText`, `nonce`, `mac`).
-- No platform issues on Flutter Windows desktop (pure Dart).
-- PBKDF2 (500k iterations) takes ~1–2 s on a modern desktop. We will run
-  it inside `compute()` so the UI stays responsive during verification
-  (FR-020).
+  nonce: salt)`.
+- AES-GCM exposed as `AesGcm.with256bits()` with first-class
+  authentication tag handling.
+- Pure Dart → no platform issues on Flutter Windows desktop.
+- PBKDF2 (500k iterations) takes ~1–2 s on modern hardware. Wrapped in
+  `compute()` so the UI stays responsive (FR-020).
 
-**Alternatives considered**:
-- **`pointycastle`**: rejected for verbose registry-based API and slower
-  release cadence. Same actual performance for our use case.
-- **`cryptography_flutter`**: rejected. Adds a native acceleration layer
-  that only benefits Android/iOS (~50× AES-GCM gains on mobile). On Windows
-  it falls back to background isolates anyway, so we'd pay an extra
-  dependency for zero benefit on the primary platform.
+**Alternatives rejected**:
+- `pointycastle`: verbose registry-based API, slower release cadence.
+- `cryptography_flutter`: native acceleration only benefits Android/iOS;
+  no benefit on Windows (primary target).
 
 ## Decision 3 — Secure storage for non-DB material
 
-**Decision**: Use `flutter_secure_storage ^9.0.0` for the encrypted master
-key blob, GCM tag, salt, and lockout state.
+**Decision**: Use `flutter_secure_storage ^9.0.0`.
 
 **Rationale**:
-- This is the de-facto Flutter wrapper around platform secure storage:
-  Windows Credential Manager (Win32 DPAPI under the hood), Android Keystore
-  (planned phase), macOS Keychain.
-- Storing lockout state outside the database is non-negotiable: during
-  lockout the database is, by design, inaccessible. Constitution Principle V
-  mandates `flutter_secure_storage` explicitly.
-- The package handles platform differences (Linux falls back to
-  `libsecret`, but Linux is not a target) and exposes a uniform
-  `read/write/delete` API.
+- De-facto Flutter wrapper around platform secure storage: Windows
+  Credential Manager, Android Keystore (planned phase), macOS Keychain.
+- Lockout state must live outside the database (database is locked
+  during a lockout period). Constitution Principle V mandates this
+  package explicitly.
+- Uniform `read/write/delete` API across platforms.
 
-**Alternatives considered**:
-- **A custom file-based store with our own AES wrapper**: rejected — extra
-  surface area for plaintext leaks and manual key-management code we'd
-  have to audit.
-- **Storing the envelope inside SQLite (in a separate non-encrypted
-  table)**: rejected — defeats the encryption-at-rest guarantee and makes
-  the lockout problem unsolvable.
+**Alternatives rejected**:
+- Custom file-based store with our own AES wrapper: extra surface area
+  for plaintext leaks and key-management code we'd have to audit.
+- Storing the envelope inside SQLite (separate non-encrypted table):
+  defeats encryption-at-rest; lockout problem unsolvable.
 
 ## Decision 4 — Routing & auth gating
 
 **Decision**: Convert `appRouter` from a top-level `final` to a
 `routerProvider` (Riverpod `Provider<GoRouter>`) that watches the auth
 state. Use GoRouter's `redirect` callback together with a
-`refreshListenable` derived from the auth state.
+`refreshListenable` driven by `AuthNotifier`.
 
 **Rationale**:
 - The current `final appRouter = GoRouter(...)` is constructed once at
-  module-load time and cannot reactively redirect when auth state changes.
-- A `routerProvider` lets the redirect closure read `authProvider`'s state
-  via `ref` and ensures the router rebuilds when auth state transitions
-  (`unauthenticated` → `authenticated`, etc.).
-- Centralized auth gating in the router enforces that no widget can
-  bypass the PIN check by navigating directly — the redirect runs on every
-  route change. This satisfies FR-005 ("PIN authentication screen before
-  any financial data is accessible or rendered").
+  module-load time and cannot reactively redirect on auth state changes.
+- A `routerProvider` lets the redirect closure read `authProvider` via
+  `ref` and rebuild on transitions (`unauthenticated` → `authenticated`).
+- Centralized gating in the router enforces FR-005: no widget can bypass
+  the PIN check by navigating directly.
 
-**Alternatives considered**:
-- **Per-widget guards**: rejected — violates Constitution Principle III
-  (UI/Business Logic Separation) and is easy to forget when adding new
-  routes. The router is the single choke point.
-- **Wrapping `MaterialApp.router` in an `auth-or-screen` builder**:
-  rejected — breaks deep-link state and doesn't compose with go_router's
-  shell routes.
+**Alternatives rejected**:
+- Per-widget guards: violates Constitution Principle III.
+- Wrapping `MaterialApp.router` in an `auth-or-screen` builder: breaks
+  deep-link state and doesn't compose with shell routes.
 
 ## Decision 5 — Async database opening pattern
 
 **Decision**: Convert `databaseProvider` from `Provider<AppDatabase>` to
-`Provider<AppDatabase>` that depends on the **decrypted master key**, and
-introduce a `masterKeyProvider` populated only after successful auth.
-Code that previously assumed synchronous DB availability (`main.dart`
-calling `RecurringGenerationService.run(db)` before `runApp`) is moved to
-a post-auth hook.
+a `Provider<AppDatabase>` that depends on a new `masterKeyProvider`,
+populated only after successful auth. Code that previously assumed
+synchronous DB availability (`main.dart` calling
+`RecurringGenerationService.run(db)` before `runApp`) is moved into
+`AuthNotifier`'s success path so it runs explicitly on every successful
+auth.
 
 **Rationale**:
 - An encrypted database can only be opened once the master key is in
-  memory. Opening must be deferred until after PIN verification succeeds.
-- The current code path opens the DB before `runApp`; with encryption,
-  this would either (a) require holding the PIN before `runApp` (not
-  possible — UI must run to collect it) or (b) open with no key (defeats
-  encryption). Neither is acceptable.
-- `RecurringGenerationService.run(db)` is moved into a one-shot effect
-  triggered by `authProvider` reaching `authenticated`, before the home
-  screen's first frame.
+  memory.
+- Explicit invocation inside `AuthNotifier` is more transparent than a
+  one-shot listener provider, and keeps the side-effect at the obvious
+  trigger point (auth success).
 
-**Alternatives considered**:
-- **Open the DB at startup with no key, then `PRAGMA rekey` after
-  auth**: rejected — leaves the DB unencrypted on disk for the lifetime of
-  every prior unauthenticated launch.
-- **Two-database architecture (one encrypted, one not)**: rejected —
-  violates Principle V (no plaintext storage of any sensitive data).
+**Alternatives rejected**:
+- One-shot listener provider firing on `unauthenticated → authenticated`:
+  works but adds indirection. Direct call from the notifier is clearer.
+- Open the DB at startup with no key, then `PRAGMA rekey` after auth:
+  leaves the DB unencrypted on disk for the lifetime of every prior
+  unauthenticated launch. Rejected.
 
-## Decision 6 — PIN input widget structure
+## Decision 6 — PIN input widget *(amended — strategy dropped)*
 
-**Decision**: Create a `PinInputWidget` that exposes a single
-`onPinComplete(String pin)` callback and abstracts the entry mechanism
-behind an internal `PinInputBackend` interface. The desktop implementation
-is a `_DesktopKeyboardBackend` (current scope). A future
-`_AndroidKeypadBackend` can be swapped in without screen redesign.
+**Decision**: `PinInputWidget` is a single, straightforward desktop
+implementation: a `TextField` with numeric `inputFormatters`,
+`maxLength: 4`, `obscureText: true`, auto-submit on the 4th digit, and
+Enter-to-submit. Add an inline `// TODO(android-keypad): when adding
+the Android phase, isolate the input mechanism behind a backend
+interface.` Do **not** pre-build the strategy interface now.
 
 **Rationale**:
-- FR-008 and the clarifications mandate desktop keyboard now and
-  on-screen keypad (Android) later. Spec assumption: "The widget must be
-  structured to accommodate both without a full rewrite."
-- A backend strategy keeps the screen layout (title, warning text, error
-  display, loading indicator) stable while only the input mechanism
-  changes.
+- Constitution Principle VII: "No premature abstractions. Add a layer
+  of indirection only when a second concrete use case demands it."
+- The spec only requires the widget be *structurable* to accommodate
+  the Android keypad later. A desktop-only implementation with all
+  input mechanism in one place satisfies that — the refactor when
+  Android arrives is mechanical.
+- Removing the strategy collapses ~50 lines of layer-of-indirection
+  into a direct `TextField`.
 
-**Alternatives considered**:
-- **Two separate screens**: rejected — duplicates layout, error handling,
-  loading state, and keyboard navigation logic. Increases maintenance
-  surface.
-- **Conditional `if (Platform.isAndroid)` inside one widget**: rejected
-  — encodes platform branching in widget logic, which violates Principle
-  III (business logic in widgets).
+**Alternatives rejected**:
+- Pre-built `PinInputBackend` strategy with desktop and stub Android
+  implementations: speculative complexity that buys nothing today.
 
 ## Decision 7 — Lockout time computation
 
-**Decision**: Implement the exponential lockout as
-`waitMinutes = pow(5, blockNumber - 1)` where `blockNumber = floor(failures / 3)`.
-Block 1 → 1 min, block 2 → 5, block 3 → 25, block 4 → 125, block n → 5^(n-1).
-Stored as `int waitMinutes` and the absolute `DateTime lockoutExpiresAt`.
+**Decision**: `waitMinutes = pow(5, blockNumber - 1)` where
+`blockNumber = floor(failures / 3)`. Block 1 → 1 min, 2 → 5, 3 → 25,
+4 → 125, n → 5^(n-1). Stored as the absolute UTC `lockoutExpiresAt`
+ISO-8601 timestamp.
 
 **Rationale**:
-- Storing the absolute expiry timestamp (rather than just remaining
-  seconds) makes restart resilience trivial — on relaunch we compare to
-  `DateTime.now()`. SC-005 ("Lockout state is fully preserved after an app
-  restart").
-- Block number is derived, not stored independently — a single
-  `failedAttempts` counter is the source of truth.
-- Counter resets to 0 on successful auth (FR-013).
+- Absolute expiry timestamps make restart resilience trivial — compare
+  to `DateTime.now().toUtc()`. SC-005.
+- Single `failedAttempts` counter is the source of truth; block number
+  is derived.
 
-**Alternatives considered**:
-- **Track block number separately**: rejected — duplicate state risks
-  drift and complicates the reset path.
-- **Store remaining seconds and update periodically**: rejected — would
-  require a background timer to keep state fresh and would lose accuracy
-  on suspend/resume.
+## Decision 8 — Test seam for SecureStorage and crypto
 
-## Decision 8 — Test seam for SecureStorage and crypto in unit tests
-
-**Decision**: All four services (`KeyDerivationService`, `EncryptionService`,
-`SecureStorageService`, `AuthService`) take their dependencies through
-constructor injection. Unit tests instantiate `AuthService` with a fake
-`SecureStorageService` (in-memory map) so tests can run without
-`flutter_secure_storage` (which requires platform plugins).
+**Decision**: All four services constructor-inject their dependencies.
+Unit tests instantiate `AuthService` with a fake
+`SecureStorageService` (in-memory `Map<String, String>`).
 
 **Rationale**:
-- Constitution Principle IV requires unit tests written and failing
-  before implementation. Tests must run via `flutter test` without
+- Constitution Principle IV: tests must run via `flutter test` without
   platform-channel availability.
-- An in-memory fake of `SecureStorageService` (a Map<String, String>)
-  exercises the same `read/write/delete` surface that the real
-  implementation uses.
+- Hand-written 4-method fake is more readable than `mocktail` for a
+  small, stable interface.
 
-**Alternatives considered**:
-- **Mocking via `mocktail`/`mockito`**: acceptable but adds a dev
-  dependency and makes tests less readable than a small hand-written fake
-  for a 4-method interface.
+## Decision 9 — Pre-existing unencrypted database *(amended — fatal error, not auto-delete)*
 
-## Decision 9 — What happens to existing development databases
-
-**Decision**: This feature treats every install as a fresh start. Any
-pre-existing unencrypted `sfinance.sqlite` on disk is **deleted** during
-first launch when the encryption initialization runs (i.e., when no
-authentication envelope is present in secure storage but a database file
-exists). This is destructive but acceptable per the Spec Assumption:
-"There is no existing production user data to migrate from an
-unencrypted database. The app is in development and this feature treats
-every install as a fresh start."
+**Decision**: On startup, if **no envelope is present in secure storage
+but a `sfinance.sqlite` file exists** at the expected path, the app
+enters `AuthState.fatalError` with a message instructing the developer
+to delete the file manually. The app does **not** auto-delete the file.
 
 **Rationale**:
-- SQLite3MultipleCiphers will refuse to open an unencrypted file with the
-  cipher pragma set — the failure mode is opaque and would surface as a
-  generic database error.
-- Detecting "envelope absent + DB file present" is unambiguous and
-  treats the situation as a fresh setup, which matches the assumption.
-- Single-line warning logged (no sensitive data) so the developer notices
-  during dev work.
+- Auto-delete is destructive — a startup glitch (e.g., transient
+  Credential Manager unavailability mistaken for "no envelope") could
+  destroy real data.
+- The spec assumption ("no existing production user data to migrate")
+  protects us against the alternative outcome regardless. If this is
+  truly a fresh-install scenario, manual deletion is a one-time, no-cost
+  step. If it isn't, we want loud failure, not silent destruction.
+- The fatal error screen displays the absolute path of the file to
+  delete and stays visible until the user resolves it.
 
-**Alternatives considered**:
-- **In-place migration with `sqlcipher_export`**: rejected — explicit
-  Spec Assumption that no migration is needed; adds code we'd have to
-  remove later.
-- **Refuse to start and show a migration UI**: rejected — same reason.
+**Alternatives rejected**:
+- Silent auto-delete (previous decision): too aggressive given
+  irreversibility.
+- Attempt in-place migration via `sqlcipher_export`: out of scope per
+  the spec assumption; adds removable code.
 
-## Decision 10 — DateTime serialization for lockout expiry
+## Decision 10 — DateTime serialization
 
-**Decision**: Store `lockoutExpiresAt` as **UTC ISO-8601 string** (e.g.,
-`2026-05-04T19:32:11.234Z`). Wall-clock comparison uses
-`DateTime.now().toUtc()`.
+**Decision**: UTC ISO-8601 strings (e.g., `2026-05-04T19:32:11.234Z`).
+Comparisons use `DateTime.now().toUtc()`.
+
+**Rationale**: unambiguous, human-readable in logs (without revealing
+crypto material), trivial to parse, robust to system timezone changes.
+
+## Decision 11 — Envelope and lockout state serialized as JSON blobs *(new)*
+
+**Decision**: Persist the auth envelope and lockout state in
+`flutter_secure_storage` as **single JSON-encoded values** under one
+key each, not as multiple separate keys.
+
+```
+auth.envelope  →  {"salt":"<hex>","encryptedMasterKey":"<base64>","gcmNonce":"<base64>","gcmTag":"<base64>"}
+auth.lockout   →  {"failedAttempts":3,"expiresAt":"2026-05-04T19:32:11.234Z"}
+                  (lockout key absent or {"failedAttempts":0} when not locked out)
+```
 
 **Rationale**:
-- ISO-8601 is unambiguous, human-readable in logs (without revealing
-  cryptographic material), and trivially parseable.
-- UTC avoids timezone drift if the user's system clock changes timezone
-  while the app is closed (e.g., laptop crosses a timezone).
-- Spec Assumption: "The lockout countdown is based on wall-clock time,
-  not app uptime."
+- Atomic write: a single `write(key, json)` is harder to leave
+  half-applied than 4–6 sequential writes.
+- Easier corruption check: presence/absence of one key, JSON parse
+  succeeds or fails — partial-state ambiguity disappears.
+- `flutter_secure_storage` has small per-platform overhead per stored
+  key on Windows (one Credential Manager entry per key); a single blob
+  keeps the secure-storage footprint tiny.
+- Trivially deletable on reinstall.
 
-**Alternatives considered**:
-- **Unix timestamp (seconds)**: equally valid, slightly less readable.
-  Either is acceptable; ISO-8601 chosen for symmetry with `intl`
-  formatting elsewhere.
+**Tradeoff**: a malformed JSON blob requires re-creating the envelope
+(loss of access). Acceptable given the corruption recovery path is
+already "reinstall" per the spec edge cases.
+
+## Decision 12 — Drop envelope `iterations` and `version` fields *(new)*
+
+**Decision**: The envelope stores **only**: `salt`, `encryptedMasterKey`,
+`gcmNonce`, `gcmTag`. The PBKDF2 iteration count is a hardcoded
+constant (`KeyDerivationService.iterations = 500_000`). There is no
+explicit envelope `version` field.
+
+**Rationale**:
+- YAGNI. Storing iterations/version was speculative future-proofing
+  with no concrete second use case (Constitution Principle VII).
+- If we ever bump iterations or change envelope format, that change
+  will require a migration anyway — and at that point we'll add the
+  field. Storing it preemptively does not reduce future effort.
+- Removing two fields simplifies the JSON shape and the test surface.
+
+**Alternatives rejected**:
+- Keep `iterations` "just in case": no concrete plan to vary it; the
+  Constitution mandates ≥ 500_000 as a floor, not a variable.
+- Keep `version`: same argument; an envelope shape change is a
+  migration regardless.
 
 ## Open Items Deferred to Implementation
 
-- Exact widget styling (typography sizes, spacing) for the PIN screens —
-  deferred to the `shared_ui` theme constants. The plan only mandates
-  "same dark theme as the rest of the app" (FR-017).
-- Error message wording (Spanish localization) — `intl` already in use.
-  Strings to be drafted at task time and reviewed for clarity.
-- Whether the lockout countdown uses `MM:SS` or "X min Y s" format —
-  display detail; the plan only mandates correct duration handling.
+- Exact widget styling for the PIN screens — deferred to `shared_ui`
+  theme constants. Plan only mandates "same dark theme as the rest of
+  the app" (FR-017).
+- Error message wording (Spanish) — drafted at task time.
+- Lockout countdown display format (`MM:SS` vs "X min Y s") — display
+  detail; plan only mandates correct duration handling.
+- Exact pinned versions of `sqlite3`, `flutter_secure_storage`,
+  `cryptography` — resolved at `flutter pub add` time to whatever is
+  current; the caret-range minimums recorded above.

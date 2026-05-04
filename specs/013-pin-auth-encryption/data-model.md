@@ -2,33 +2,45 @@
 
 **Feature**: 013-pin-auth-encryption
 **Date**: 2026-05-04
+**Last revised**: 2026-05-04 (envelope simplified, JSON-blob storage)
 
 This feature does **not** add any new tables to the SQLite (Drift) schema —
 the schema version stays at `4`. All new persistent data lives in
 `flutter_secure_storage` (platform-isolated key/value store) so it is
 accessible while the database is locked.
 
+## Persistent storage layout
+
+Two values, both serialized as JSON strings.
+
+```
+KEY                VALUE
+auth.envelope      {"salt":"<hex>","encryptedMasterKey":"<b64>","gcmNonce":"<b64>","gcmTag":"<b64>"}
+auth.lockout       {"failedAttempts":<int>,"expiresAt":"<UTC ISO-8601>"|null}
+```
+
+Either key may be absent:
+- **`auth.envelope` absent** → fresh install, `AuthState.needsSetup`.
+- **`auth.lockout` absent or `failedAttempts == 0`** → no lockout state.
+
+PBKDF2 iteration count (`500_000`) is a hardcoded constant in
+`KeyDerivationService` — not stored in the envelope.
+
 ## Entities
 
-### AuthEnvelope (persisted in `flutter_secure_storage`)
-
-The artifact that binds the user's PIN to the Master Key. Created at first
-launch; read on every subsequent launch.
+### AuthEnvelope (persisted as JSON under `auth.envelope`)
 
 | Field | Type | Encoding | Notes |
 |---|---|---|---|
 | `salt` | bytes (16) | hex string | Random per-install. Used as PBKDF2 salt. |
-| `iterations` | int | decimal string | Stored to allow future iteration count bumps without breaking existing installs. Initial value: `500000`. |
 | `encryptedMasterKey` | bytes (32) | base64 | Master Key after AES-256-GCM encryption with the PIN-derived key. |
 | `gcmNonce` | bytes (12) | base64 | Random per-encryption nonce (IV). |
 | `gcmTag` | bytes (16) | base64 | Authentication tag from AES-GCM. Mismatch on decrypt → wrong PIN. |
-| `version` | int | decimal string | Envelope schema version. Initial: `1`. Allows future format changes (e.g., adding biometric wrapping). |
 
 **Validation rules**:
-- All fields MUST be present together. Partial envelope = corrupted state →
-  reinstall path (Edge Case in spec).
+- All four fields MUST be present together. JSON parse failure or any
+  missing field → corrupted state → `AuthState.fatalError`.
 - `salt` and `gcmNonce` MUST be from `Random.secure()`.
-- `iterations` MUST be ≥ 500,000 (Constitution Principle V minimum).
 
 **Lifecycle**:
 - *First launch*: created during PIN setup. No prior envelope exists.
@@ -36,74 +48,55 @@ launch; read on every subsequent launch.
 - *Never modified after creation* in this phase. (PIN change, out of scope,
   would re-wrap the same Master Key with a new salt + GCM tag.)
 
-**Storage keys** (`flutter_secure_storage` key names):
-
-```
-auth.envelope.salt
-auth.envelope.iterations
-auth.envelope.encryptedMasterKey
-auth.envelope.gcmNonce
-auth.envelope.gcmTag
-auth.envelope.version
-```
-
-### LockoutState (persisted in `flutter_secure_storage`)
+### LockoutState (persisted as JSON under `auth.lockout`)
 
 | Field | Type | Encoding | Notes |
 |---|---|---|---|
-| `failedAttempts` | int | decimal string | Total consecutive failed PIN attempts since the last success. Resets to 0 on successful auth. |
-| `lockoutExpiresAt` | DateTime? | UTC ISO-8601 or absent | When the current lockout ends. Absent if not currently locked out. |
+| `failedAttempts` | int | JSON number | Total consecutive failed PIN attempts since the last success. Resets to 0 on successful auth. |
+| `expiresAt` | DateTime? | UTC ISO-8601 string, or `null` | When the current lockout ends. `null` if not currently locked out. |
 
 **Derived fields** (not stored):
 - `currentBlock = floor(failedAttempts / 3)` — 0 means "no block yet."
-- `isLockedOut = lockoutExpiresAt != null && DateTime.now().toUtc() < lockoutExpiresAt`
+- `isLockedOut = expiresAt != null && DateTime.now().toUtc() < expiresAt`
 - `nextLockoutMinutes = pow(5, currentBlock - 1).toInt()` — only meaningful when triggering a new lockout.
 
 **Validation rules**:
 - `failedAttempts` MUST be `>= 0`.
-- When `lockoutExpiresAt` is set, `failedAttempts` MUST be a positive
+- When `expiresAt` is non-null, `failedAttempts` MUST be a positive
   multiple of 3.
-- The `lockoutExpiresAt` value MUST be checked against current wall-clock
-  UTC, not against `DateTime.now()` in local time.
+- `expiresAt` is compared to UTC, never local time.
 
 **Lifecycle / state transitions**:
 
 ```text
-[clean]                                  failedAttempts=0,    expiry=null
+[clean]                                  failedAttempts=0,    expiresAt=null
    │
    │ wrong PIN (1st of block)
    ▼
-[failing-1]                              failedAttempts=1,    expiry=null
+[failing-1]                              failedAttempts=1,    expiresAt=null
    │
    │ wrong PIN
    ▼
-[failing-2]                              failedAttempts=2,    expiry=null
+[failing-2]                              failedAttempts=2,    expiresAt=null
    │
    │ wrong PIN (3rd → block triggered)
    ▼
-[locked-out, block=1, 1 min]             failedAttempts=3,    expiry=now+1min
+[locked-out, block=1, 1 min]             failedAttempts=3,    expiresAt=now+1min
    │
    ├─ correct PIN attempted → REJECTED (still locked) → state unchanged
    │
    │ countdown elapses, user enters wrong PIN again
    ▼
-[failing-4]                              failedAttempts=4,    expiry=null
+[failing-4]                              failedAttempts=4,    expiresAt=null
    │   (no new lockout until 6th total)
    │
    │ wrong PIN ×2 (5th, 6th)
    ▼
-[locked-out, block=2, 5 min]             failedAttempts=6,    expiry=now+5min
+[locked-out, block=2, 5 min]             failedAttempts=6,    expiresAt=now+5min
    │
    ├─ correct PIN
    ▼
-[clean]                                  failedAttempts=0,    expiry=null
-```
-
-**Storage keys**:
-
-```
-auth.lockout.failedAttempts
-auth.lockout.expiresAt        (omitted when not locked out)
+[clean]                                  failedAttempts=0,    expiresAt=null
 ```
 
 ### MasterKey (in-memory only)
@@ -131,7 +124,8 @@ sealed class AuthState {
   verifying         // PIN submitted, PBKDF2 running
   authenticated     // master key recovered, DB ready
   lockedOut(DateTime expiresAt)
-  fatalError(String reason)   // e.g., partial/corrupt envelope, no secure storage
+  fatalError(String reason)   // partial/corrupt envelope, no secure storage,
+                              //   or pre-existing unencrypted DB present
 }
 ```
 
@@ -146,10 +140,10 @@ widgets only observe via `ref.watch(authProvider)`.
 | FR-005 — PIN required every launch | Envelope present → `AuthState.needsAuth` |
 | FR-007 — Show remaining attempts | Derived from `LockoutState.failedAttempts` |
 | FR-010 / FR-011 — Lockout policy | `LockoutState` + lockout transition above |
-| FR-012 — Lockout persists | `LockoutState` in `flutter_secure_storage` |
+| FR-012 — Lockout persists | `LockoutState` JSON blob in `flutter_secure_storage` |
 | FR-013 — Counter reset on success | `LockoutState.failedAttempts` set to 0 |
 | FR-015 — Data unreadable without PIN | DB opened only when `AuthState.authenticated` |
-| FR-016 — Biometric extensibility | `AuthEnvelope.version` field reserved for future biometric wrap |
+| FR-016 — Biometric extensibility | A future "biometric envelope" can coexist alongside `auth.envelope` (no schema change required to add it) |
 | FR-018 — Secure storage unavailable | `AuthState.fatalError` |
 | FR-019 — Master key distinct from PIN | `MasterKey` is independent of PIN; PIN only derives a wrapping key |
 | FR-020 — Loading during verification | `AuthState.verifying` |
@@ -164,3 +158,6 @@ widgets only observe via `ref.watch(authProvider)`.
   then cleared.
 - **Derived (PBKDF2) wrapping key**: never persisted. Computed fresh on
   every unlock and discarded after the master key is recovered.
+- **`iterations` and `version` fields**: deliberately not stored
+  (Decision 12 in research.md). Iteration count is a constant; envelope
+  format changes will be migrations when they happen.

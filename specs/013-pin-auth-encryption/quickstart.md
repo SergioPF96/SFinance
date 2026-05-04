@@ -153,6 +153,31 @@ exhaustive).
 
 This validation may be easier as an integration test than a manual run.
 
+## Validation 8 — Pre-existing unencrypted DB → fatal error (Decision 9)
+
+**Pre-state**: a freshly-wiped install (no envelope in secure storage)
+plus an old plaintext `sfinance.sqlite` file still present from a
+pre-encryption build.
+
+**Setup**:
+1. Wipe the Credential Manager entries (no envelope).
+2. Place a non-empty plaintext SQLite file at
+   `%APPDATA%\com.example.sfinance\sfinance.sqlite` (e.g., copy one from
+   a checkout of branch `011-quick-expenses`).
+3. Launch the app.
+
+**Expect**:
+- A fatal error screen is shown immediately.
+- The screen names the absolute path of the offending file.
+- The screen instructs the user to delete the file manually and relaunch.
+- The app does **not** auto-delete the file. Verify the file is still
+  on disk after closing the app.
+- After manually deleting the file and relaunching, the app proceeds to
+  the PIN setup screen normally.
+
+**Pass criteria**: no destructive action taken by the app, no silent data
+loss possible.
+
 ## Final checklist
 
 - [ ] All 7 validations pass on Windows desktop.
