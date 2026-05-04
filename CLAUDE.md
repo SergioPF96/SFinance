@@ -51,6 +51,8 @@ No desktop-only interaction patterns without a touch-compatible fallback.
 well-maintained over cutting-edge. No premature abstractions.
 
 ## Active Technologies
+- Dart 3.x (Flutter stable channel) (013-pin-auth-encryption)
+- SQLite via Drift, on-device only. Schema version stays at (013-pin-auth-encryption)
 
 - **Framework**: Flutter (stable channel)
 - **Language**: Dart
