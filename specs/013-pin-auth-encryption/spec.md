@@ -77,6 +77,9 @@ grants full access.
 5. **Given** the PIN entry screen is open on desktop, **When** the user types
    4 digits, **Then** the PIN is submitted automatically; pressing Enter also
    triggers submission.
+6. **Given** the user has submitted their PIN, **When** verification is in
+   progress, **Then** a loading indicator is shown, the PIN field and submit
+   action are disabled, and they remain disabled until the outcome is known.
 
 ---
 
@@ -191,6 +194,9 @@ input re-enables, then authenticate successfully and verify the counter resets.
 - **FR-019**: The Protected Data Store MUST be opened by a Master Key that is
   distinct from the user's PIN. The Master Key MUST be generated once at first
   launch; the PIN MUST NOT directly open the Protected Data Store.
+- **FR-020**: While PIN verification is in progress (after submission), the app
+  MUST display a loading indicator, disable the PIN input field and submit
+  action, and keep them disabled until the verification result is known.
 
 ### Key Entities
 
@@ -261,6 +267,9 @@ input re-enables, then authenticate successfully and verify the counter resets.
 - Biometric authentication (Android) is out of scope for this phase. The
   security architecture must support it as a future extension without requiring
   changes to stored protected data.
+- PIN change is out of scope for this phase. The Master Key architecture
+  inherently supports it in a future phase — re-wrapping the Authentication
+  Envelope with a newly derived key — without modifying the Protected Data Store.
 
 ## Clarifications
 
@@ -295,3 +304,10 @@ input re-enables, then authenticate successfully and verify the counter resets.
   must be structured to accommodate both without a full rewrite.
 - Q: Where is lockout state stored? → A: In flutter_secure_storage, since the
   encrypted database is inaccessible during lockout.
+- Q: Can the user change their PIN after initial setup? → A: Explicitly out of
+  scope for this phase. The Master Key architecture supports it in a future
+  phase (re-wrapping the Authentication Envelope) without re-encrypting the
+  database.
+- Q: What does the user see while PIN verification is processing? → A: A
+  loading indicator is shown and the PIN field and submit action are disabled
+  until the result is known.
