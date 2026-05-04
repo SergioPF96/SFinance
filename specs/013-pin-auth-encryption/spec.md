@@ -143,7 +143,7 @@ input re-enables, then authenticate successfully and verify the counter resets.
 ### Functional Requirements
 
 - **FR-001**: On first launch, the app MUST present a PIN creation screen
-  before the existing initial balance screen.
+  before the existing initial balance screen. This step cannot be skipped.
 - **FR-002**: The PIN creation screen MUST require the user to enter a 4-digit
   numeric PIN and then confirm it by entering the same PIN a second time.
 - **FR-003**: The PIN creation screen MUST display a prominent, explicit warning
@@ -153,6 +153,7 @@ input re-enables, then authenticate successfully and verify the counter resets.
   both fields MUST be cleared and the user shown a clear mismatch error.
 - **FR-005**: On every launch after initial setup, the app MUST display a PIN
   authentication screen before any financial data is accessible or rendered.
+  There is no "remember session" option across launches.
 - **FR-006**: Correct PIN entry MUST unlock the app and grant access to all
   financial screens for the duration of that session.
 - **FR-007**: Incorrect PIN entry MUST display an error, clear the input, and
@@ -169,7 +170,9 @@ input re-enables, then authenticate successfully and verify the counter resets.
   after block 1, 5 min after block 2, 25 min after block 3, 125 min after
   block 4, and so on (×5 per block).
 - **FR-012**: Lockout state (failure count and lockout expiry time) MUST
-  persist across app restarts, crashes, and device reboots.
+  persist across app restarts, crashes, and device reboots. It MUST be stored
+  independently of the Protected Data Store, since the data store is
+  inaccessible during lockout.
 - **FR-013**: Successful PIN authentication MUST reset the consecutive failure
   counter to zero.
 - **FR-014**: The app MUST provide no PIN recovery mechanism of any kind — no
@@ -185,25 +188,35 @@ input re-enables, then authenticate successfully and verify the counter resets.
   dark visual theme as the rest of the app.
 - **FR-018**: If the device's secure storage is unavailable, the app MUST
   display a clear error and MUST NOT fall back to unprotected operation.
+- **FR-019**: The Protected Data Store MUST be opened by a Master Key that is
+  distinct from the user's PIN. The Master Key MUST be generated once at first
+  launch; the PIN MUST NOT directly open the Protected Data Store.
 
 ### Key Entities
 
-- **PIN**: A 4-digit numeric code chosen by the user at first launch. Used only
-  transiently during authentication to verify identity and gain access to the
-  protected data. Never stored in any form.
+- **PIN**: A 4-digit numeric code (digits 0–9 only) chosen by the user at
+  first launch. Used only transiently during authentication to verify identity
+  and gain access to protected data. Never stored in any form.
+- **Master Key**: The secret value that directly opens the Protected Data
+  Store. Generated once at first launch and never regenerated. Never stored in
+  plaintext; exists only in memory during an authenticated session.
 - **Protected Data Store**: The encrypted container holding all financial data
-  (accounts, transactions, categories, recurring entries). Accessible only
-  after successful authentication in the current session.
+  (accounts, transactions, categories, recurring entries). Opened exclusively
+  by the Master Key; accessible only after successful authentication in the
+  current session.
 - **Authentication Session**: The in-memory state indicating the current
   session is authenticated. Exists only while the app process is running;
   cleared on app termination.
-- **Authentication Envelope**: The stored artifact that binds the user's PIN to
-  the ability to open the Protected Data Store. Kept in the device's isolated
-  secure storage (not the general filesystem). Contains no plaintext
-  credentials.
+- **Authentication Envelope**: The stored artifact that binds the user's PIN
+  to the Master Key. Contains the Master Key in encrypted form, the
+  verification data, and the derivation parameters (a random value generated
+  at PIN creation time). Kept in the device's isolated secure storage area,
+  separate from the Protected Data Store. Contains no plaintext credentials.
 - **Lockout State**: Persistent record of the count of consecutive failed
   attempts and, when a lockout is active, the exact time the current lockout
-  expires. Survives app restarts.
+  expires. Stored in the device's isolated secure storage area (not the
+  Protected Data Store) so it is accessible even when the database is locked.
+  Survives app restarts.
 
 ## Success Criteria *(mandatory)*
 
@@ -248,3 +261,37 @@ input re-enables, then authenticate successfully and verify the counter resets.
 - Biometric authentication (Android) is out of scope for this phase. The
   security architecture must support it as a future extension without requiring
   changes to stored protected data.
+
+## Clarifications
+
+### Session 2026-05-04
+
+- Q: Is PIN setup mandatory on first launch? → A: Yes, it cannot be skipped.
+  It is the first step of onboarding, before the initial balance screen.
+- Q: Does the user confirm the PIN when creating it? → A: Yes. The user enters
+  the PIN twice; both entries must match before the PIN is accepted.
+- Q: What format is the PIN? → A: Exactly 4 numeric digits (0–9). No letters
+  or special characters.
+- Q: What happens if the app is closed and reopened? → A: The PIN must be
+  entered on every launch. There is no "remember session" option.
+- Q: What is the lockout policy for failed attempts? → A: After every 3
+  consecutive failed attempts (one block), the user must wait before retrying.
+  Wait times: 1 min (block 1), 5 min (block 2), 25 min (block 3), 125 min
+  (block 4), and so on (×5 per block). Counter resets on successful
+  authentication.
+- Q: Can the PIN be recovered if forgotten? → A: No. There is no recovery
+  mechanism of any kind. The user is explicitly warned of this when setting the
+  PIN for the first time.
+- Q: How is the database encrypted? → A: Full-database encryption via SQLCipher
+  (AES-256). A random 32-byte master key is generated at first launch and
+  stored encrypted (AES-256-GCM) using a key derived from the PIN via
+  PBKDF2-SHA256 with a random 16-byte salt and a minimum of 500,000
+  iterations. The master key — not the PIN — opens the database.
+- Q: Is biometric authentication in scope? → A: Not for this feature. The
+  architecture must support adding it in the Android phase via platform keystore
+  without re-encrypting the database.
+- Q: How is the PIN entered on each platform? → A: On desktop: standard numeric
+  keyboard input. On Android (future): on-screen numeric keypad. The widget
+  must be structured to accommodate both without a full rewrite.
+- Q: Where is lockout state stored? → A: In flutter_secure_storage, since the
+  encrypted database is inaccessible during lockout.
