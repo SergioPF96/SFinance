@@ -37,7 +37,7 @@
 | II. Riverpod-Only State | No `setState`, no non-Riverpod state management, all providers globally scoped? | |
 | III. UI/Business Logic Separation | Zero business logic in widgets? Centralized routing used? Models are pure Dart? | |
 | IV. Test-First for Financial Logic | Are unit tests written and confirmed failing before financial calculation implementation? | |
-| V. Offline-First & Privacy | No network calls introduced? No sensitive data in logs or errors? | |
+| V. Offline-First, Privacy & Encryption | No network calls introduced? No sensitive data in logs or errors? No plaintext cryptographic material on disk or in logs? If encryption or auth is touched: master key architecture preserved (PIN never used directly as DB key), lockout enforced before any decryption attempt, flutter_secure_storage used for all crypto blobs? | |
 | VI. Financial UX Clarity | Currency formatted correctly? Dates unambiguous? Positive/negative explicit? Accessibility covered? Android-compatible patterns? | |
 | VII. Simplicity | New dependencies justified? No premature abstractions? Architecture understandable to single returning developer? | |
 
