@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'routing/app_router.dart';
 
-/// Root widget wiring the dark theme and go_router.
-class SFinanceApp extends StatelessWidget {
+class SFinanceApp extends ConsumerWidget {
   const SFinanceApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'SFinance',
       theme: buildAppTheme(),
-      routerConfig: appRouter,
+      routerConfig: ref.watch(routerProvider),
       debugShowCheckedModeBanner: false,
     );
   }
