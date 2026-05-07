@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $SourcePath   = 'C:\Users\Sergio\Proyectos\SFinance\sfinance.sqlite'
 $TargetPath   = 'C:\Users\Sergio\Documents\sfinance.sqlite'
 $CredPath     = 'C:\Users\Sergio\AppData\Roaming\com.example\sfinance\flutter_secure_storage.dat'
-$Sqlite3mcDll = 'C:\Users\Sergio\Proyectos\SFinance\my_apps\apps\sfinance\build\windows\x64\runner\Debug\sqlite3.dll'
+$Sqlite3mcDll = 'C:\Users\Sergio\Proyectos\SFinance\my_apps\apps\sfinance\build\windows\x64\runner\Debug\sqlite3mc.dll'
 $Pin          = '7681'
 
 function ToHex([byte[]] $bytes) {
