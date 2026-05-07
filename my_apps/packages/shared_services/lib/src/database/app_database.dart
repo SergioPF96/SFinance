@@ -1,6 +1,6 @@
+import 'dart:typed_data';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'dart:io';
@@ -21,8 +21,12 @@ part 'app_database.g.dart';
   daos: [TransactionDao, TemplateDao, InitialCapitalDao, QuickExpenseDao],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  /// Opens the encrypted database using [masterKey] (32 bytes) as the
+  /// SQLCipher passphrase via PRAGMA key.
+  AppDatabase(Uint8List masterKey)
+      : super(_openConnection(masterKey));
 
+  /// Test constructor — accepts a pre-built executor (in-memory, etc.).
   AppDatabase.forTesting(super.executor);
 
   @override
@@ -33,19 +37,15 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       onUpgrade: (migrator, from, to) async {
         if (from < 2) {
-          // Add payment_day column (nullable for backward compatibility).
           await migrator.addColumn(
             recurringTemplates,
             recurringTemplates.paymentDay,
           );
-          // Backfill existing rows: treat all pre-feature templates as day 1.
           await customStatement(
             'UPDATE recurring_templates SET payment_day = 1 WHERE payment_day IS NULL',
           );
         }
         if (from < 3) {
-          // Make end_date nullable to support open-ended subscriptions (spec 007).
-          // SQLite does not support ALTER COLUMN, so we recreate the table.
           await customStatement('''
             CREATE TABLE recurring_templates_new (
               id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -85,11 +85,16 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-LazyDatabase _openConnection() {
+LazyDatabase _openConnection(Uint8List masterKey) {
   return LazyDatabase(() async {
-    await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'sfinance.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    final hexKey = masterKey.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (rawDb) {
+        rawDb.execute("PRAGMA key = \"x'$hexKey'\";");
+      },
+    );
   });
 }

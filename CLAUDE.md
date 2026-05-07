@@ -64,6 +64,8 @@ well-maintained over cutting-edge. No premature abstractions.
 - SQLite (Drift) local on-device — sin cambios de esquema (010-entries-ux-fixes)
 - Dart 3.x — Flutter stable channel + flutter_riverpod ^2.5.0, drift ^2.20.0, go_router ^14.0.0, intl ^0.19.0, path_provider ^2.1.0, path ^1.9.0, shared_models, shared_ui, shared_services. **NEW**: file_picker ^8.x (justified in Complexity Tracking). (011-quick-expenses)
 - SQLite via Drift, on-device only. Schema migration v3 → v4 (add `quick_expenses` table). Internal image files stored in `getApplicationDocumentsDirectory()/quick_expense_images/` (managed by `ImageStorageService`). (011-quick-expenses)
+- Dart 3.x (Flutter stable channel) (013-pin-auth-encryption)
+- SQLite via Drift, on-device only. Schema version stays at 4. **NEW**: `sqlite3 ^3.0.0` (sqlite3mc source for SQLCipher v4), `flutter_secure_storage ^9.0.0`, `cryptography ^2.9.0`. Drift bumped `^2.20.0 → ^2.32.0`. (013-pin-auth-encryption)
 
 - **Framework**: Flutter (stable channel)
 - **Language**: Dart

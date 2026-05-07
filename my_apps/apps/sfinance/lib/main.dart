@@ -2,20 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
-import 'providers/database_provider.dart';
-import 'services/recurring_generation_service.dart';
+import 'providers/auth_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es_ES', null);
 
-  // Open the database before the first frame renders.
   final container = ProviderContainer();
-  final db = container.read(databaseProvider);
-
-  // Generate any due recurring entries (subscriptions, salary, etc.)
-  // before the UI is shown, so KPI cards and lists are immediately correct.
-  await RecurringGenerationService.run(db);
+  await container.read(authProvider.notifier).bootstrap();
 
   runApp(
     UncontrolledProviderScope(
